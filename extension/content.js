@@ -37,12 +37,59 @@ function createMasterMindButton() {
         mastermindBtn.style.boxShadow = gameFinished ? '0 0 50px rgba(16, 185, 129, 0.8)' : '0 10px 30px rgba(16, 185, 129, 0.4)';
     };
 
-    mastermindBtn.onclick = (e) => {
+    mastermindBtn.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
         
         let gameUrl = window.location.href;
-        window.open(`http://localhost:3003/?url=${encodeURIComponent(gameUrl)}`, '_blank');
+        
+        // Visual feedback
+        const originalText = mastermindBtn.innerHTML;
+        mastermindBtn.innerHTML = '⏳ EXTRACTING PGN...';
+        mastermindBtn.style.pointerEvents = 'none';
+        
+        let extractedPgn = null;
+
+        try {
+            if (gameUrl.includes('chess.com')) {
+                // The browser fetch includes the user's cookies, bypassing Cloudflare and Private Game restrictions!
+                // We construct the base game URL in case they are on the analysis board
+                const chessMatch = gameUrl.match(/chess\.com\/(?:analysis\/)?game\/([a-zA-Z0-9_-]+)\/(\d+)/);
+                if (chessMatch) {
+                    const fetchUrl = `https://www.chess.com/game/${chessMatch[1]}/${chessMatch[2]}`;
+                    const response = await fetch(fetchUrl);
+                    const html = await response.text();
+                    
+                    // Parse the embedded PGN from the authenticated HTML response
+                    const pgnMatch = html.match(/"pgn":"([^"]+)"/);
+                    if (pgnMatch && pgnMatch[1]) {
+                        extractedPgn = pgnMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                    }
+                }
+            } else if (gameUrl.includes('lichess.org')) {
+                const lichessMatch = gameUrl.match(/lichess\.org\/([a-zA-Z0-9]{8,12})/);
+                if (lichessMatch) {
+                    const response = await fetch(`https://lichess.org/game/export/${lichessMatch[1]}`, {
+                        headers: { "Accept": "application/x-chess-pgn" }
+                    });
+                    if (response.ok) extractedPgn = await response.text();
+                }
+            }
+        } catch (err) {
+            console.error("MasterMind PGN Extraction Error:", err);
+        }
+
+        mastermindBtn.innerHTML = originalText;
+        mastermindBtn.style.pointerEvents = 'auto';
+
+        // Redirect to local MasterMind with either the raw PGN or fallback URL
+        if (extractedPgn) {
+            // Encode the raw PGN directly into the URL
+            window.open(`http://localhost:3003/?pgn=${encodeURIComponent(extractedPgn)}`, '_blank');
+        } else {
+            // Fallback to URL method
+            window.open(`http://localhost:3003/?url=${encodeURIComponent(gameUrl)}`, '_blank');
+        }
     };
 
     document.body.appendChild(mastermindBtn);

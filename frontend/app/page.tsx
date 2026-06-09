@@ -40,7 +40,11 @@ function HomeContent() {
 
   useEffect(() => {
     const urlParam = searchParams.get('url');
-    if (urlParam) {
+    const pgnParam = searchParams.get('pgn');
+    
+    if (pgnParam) {
+      handleAnalyze(pgnParam);
+    } else if (urlParam) {
       handleAnalyze(urlParam);
     }
   }, [searchParams]);
