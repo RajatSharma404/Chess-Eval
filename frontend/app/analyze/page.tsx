@@ -69,11 +69,14 @@ export default function AnalyzePage() {
             <Home size={20} className="text-gray-400 group-hover:text-white" />
           </button>
           <div className="h-8 w-[1px] bg-white/10" />
-          <div>
-            <h1 className="text-xs font-black text-white uppercase tracking-[0.3em]">Analysis Laboratory</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-              <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Stockfish 17 Engine Online</p>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+            <div>
+              <h1 className="text-xs font-black text-white uppercase tracking-[0.3em]">Analysis Laboratory</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Stockfish 17 Engine Online</p>
+              </div>
             </div>
           </div>
         </div>

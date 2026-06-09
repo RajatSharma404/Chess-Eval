@@ -54,17 +54,16 @@ function createMasterMindButton() {
             if (gameUrl.includes('chess.com')) {
                 // The browser fetch includes the user's cookies, bypassing Cloudflare and Private Game restrictions!
                 // We construct the base game URL in case they are on the analysis board
-                const chessMatch = gameUrl.match(/chess\.com\/(?:analysis\/)?game\/([a-zA-Z0-9_-]+)\/(\d+)/);
-                if (chessMatch) {
-                    const fetchUrl = `https://www.chess.com/game/${chessMatch[1]}/${chessMatch[2]}`;
-                    const response = await fetch(fetchUrl);
-                    const html = await response.text();
-                    
-                    // Parse the embedded PGN from the authenticated HTML response
-                    const pgnMatch = html.match(/"pgn":"([^"]+)"/);
-                    if (pgnMatch && pgnMatch[1]) {
-                        extractedPgn = pgnMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-                    }
+                let fetchUrl = gameUrl.split('?')[0]; // Remove query params
+                fetchUrl = fetchUrl.replace('/analysis/game/', '/game/'); // Convert analysis URL to standard game URL
+                
+                const response = await fetch(fetchUrl);
+                const html = await response.text();
+                
+                // Parse the embedded PGN from the authenticated HTML response
+                const pgnMatch = html.match(/"pgn":"([^"]+)"/);
+                if (pgnMatch && pgnMatch[1]) {
+                    extractedPgn = pgnMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
                 }
             } else if (gameUrl.includes('lichess.org')) {
                 const lichessMatch = gameUrl.match(/lichess\.org\/([a-zA-Z0-9]{8,12})/);

@@ -20,12 +20,16 @@ def fetch_pgn(url: str) -> str:
         raise HTTPException(status_code=404, detail="Lichess game not found")
 
     # Chess.com URL Parsing
-    # Patterns: chess.com/game/live/ID, chess.com/analysis/game/live/ID, etc.
-    chess_match = re.search(r"chess\.com/(?:analysis/)?game/([a-zA-Z0-9_-]+)/(\d+)", url)
+    # Patterns: chess.com/game/live/ID, chess.com/analysis/game/live/ID, chess.com/game/ID etc.
+    chess_match = re.search(r"chess\.com/(?:analysis/)?game/(?:([a-zA-Z0-9_-]+)/)?(\d+)", url)
     if chess_match:
         game_type = chess_match.group(1)
         game_id = chess_match.group(2)
-        fetch_url = f"https://www.chess.com/game/{game_type}/{game_id}"
+        
+        if game_type:
+            fetch_url = f"https://www.chess.com/game/{game_type}/{game_id}"
+        else:
+            fetch_url = f"https://www.chess.com/game/{game_id}"
         
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
