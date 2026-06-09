@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/RajatSharma404/Chess-Eval/main/frontend/public/favicon.ico" alt="MasterMind Logo" width="100"/>
+  <img src="https://raw.githubusercontent.com/RajatSharma404/Chess-Eval/main/frontend/public/logo.png" alt="MasterMind Logo" width="150"/>
   <h1>🧠 MasterMind - Advanced Chess Evaluation Platform</h1>
   <p><i>Professional-grade chess analysis powered by Stockfish 17 and Google Gemini 2.0 AI.</i></p>
 
