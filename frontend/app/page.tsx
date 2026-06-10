@@ -92,9 +92,9 @@ function HomeContent() {
             <div className="flex items-center flex-1 w-full">
               <Search className="ml-4 text-gray-500 hidden sm:block" size={20} />
               <textarea 
-                rows={1}
+                rows={gameUrl.includes('[Event') ? 5 : 1}
                 placeholder="Paste Lichess/Chess.com URL or Raw PGN"
-                className="bg-transparent border-none focus:ring-0 text-white flex-1 p-3 sm:p-5 text-base sm:text-lg outline-none placeholder:text-gray-600 font-medium resize-none whitespace-nowrap overflow-hidden"
+                className="bg-transparent border-none focus:ring-0 text-white flex-1 p-3 sm:p-5 text-base sm:text-lg outline-none placeholder:text-gray-600 font-medium resize-none overflow-y-auto max-h-40 custom-scrollbar"
                 value={gameUrl}
                 onChange={(e) => setGameUrl(e.target.value)}
                 onKeyDown={(e) => {

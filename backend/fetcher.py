@@ -4,8 +4,9 @@ from fastapi import HTTPException
 
 def fetch_pgn(url: str) -> str:
     # Direct PGN check
-    if url.strip().startswith("[Event"):
-        return url
+    cleaned_url = url.strip().strip('"').strip("'").strip()
+    if cleaned_url.startswith("[Event"):
+        return cleaned_url
 
     # Lichess URL Parsing
     lichess_match = re.search(r"lichess\.org/([a-zA-Z0-9]{8,12})", url)

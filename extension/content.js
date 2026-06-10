@@ -53,21 +53,8 @@ function createMasterMindButton() {
         try {
             if (gameUrl.includes('chess.com')) {
                 try {
-                    // Inject a clipboard interceptor to capture what Chess.com's copy buttons produce
-                    if (!document.getElementById('mastermind-clipboard-interceptor')) {
-                        const script = document.createElement('script');
-                        script.id = 'mastermind-clipboard-interceptor';
-                        script.textContent = `
-                            const originalWriteText = navigator.clipboard.writeText;
-                            navigator.clipboard.writeText = function(text) {
-                                if (text && text.includes('[Event ')) {
-                                    window.postMessage({ type: 'MASTERMIND_PGN_COPIED', pgn: text }, '*');
-                                }
-                                return originalWriteText.apply(this, arguments);
-                            };
-                        `;
-                        document.documentElement.appendChild(script);
-                    }
+                    // Clipboard interceptor is now loaded at document_start via manifest.json (interceptor.js)
+                    // so we don't dynamically inject inline scripts and trigger CSP violations.
                     
                     let pgnFromClipboard = null;
                     const messageListener = (event) => {

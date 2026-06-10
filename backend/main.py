@@ -1,6 +1,13 @@
 import hashlib
 import json
 import os
+from dotenv import load_dotenv
+
+# Load env variables from root and backend directories
+load_dotenv()                 # loads .env in the current working directory
+load_dotenv("backend/.env")    # loads backend/.env if run from project root
+load_dotenv("../.env")        # loads root .env if run from backend directory
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
