@@ -52,18 +52,137 @@ function createMasterMindButton() {
 
         try {
             if (gameUrl.includes('chess.com')) {
-                // The browser fetch includes the user's cookies, bypassing Cloudflare and Private Game restrictions!
-                // We construct the base game URL in case they are on the analysis board
-                let fetchUrl = gameUrl.split('?')[0]; // Remove query params
-                fetchUrl = fetchUrl.replace('/analysis/game/', '/game/'); // Convert analysis URL to standard game URL
-                
-                const response = await fetch(fetchUrl);
-                const html = await response.text();
-                
-                // Parse the embedded PGN from the authenticated HTML response
-                const pgnMatch = html.match(/"pgn":"([^"]+)"/);
-                if (pgnMatch && pgnMatch[1]) {
-                    extractedPgn = pgnMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                try {
+                    // Inject a clipboard interceptor to capture what Chess.com's copy buttons produce
+                    if (!document.getElementById('mastermind-clipboard-interceptor')) {
+                        const script = document.createElement('script');
+                        script.id = 'mastermind-clipboard-interceptor';
+                        script.textContent = `
+                            const originalWriteText = navigator.clipboard.writeText;
+                            navigator.clipboard.writeText = function(text) {
+                                if (text && text.includes('[Event ')) {
+                                    window.postMessage({ type: 'MASTERMIND_PGN_COPIED', pgn: text }, '*');
+                                }
+                                return originalWriteText.apply(this, arguments);
+                            };
+                        `;
+                        document.documentElement.appendChild(script);
+                    }
+                    
+                    let pgnFromClipboard = null;
+                    const messageListener = (event) => {
+                        if (event.data && event.data.type === 'MASTERMIND_PGN_COPIED') {
+                            pgnFromClipboard = event.data.pgn;
+                        }
+                    };
+                    window.addEventListener('message', messageListener);
+
+                    // Step 1: Click the share button
+                    const shareBtn = document.querySelector('button[aria-label="Share"]') || 
+                                     document.querySelector('.icon-font-chess.share')?.closest('button') || 
+                                     document.querySelector('.share')?.closest('button') ||
+                                     document.querySelector('[data-cy="share-button"]');
+                    
+                    if (shareBtn) {
+                        console.log("MasterMind: Found Share button, clicking...");
+                        shareBtn.click();
+                        
+                        // Wait for modal to appear (poll up to 2s)
+                        for(let i = 0; i < 20; i++) {
+                            await new Promise(r => setTimeout(r, 100));
+                            if (document.querySelector('.share-menu-modal, .share-menu-component, [aria-label="Share Menu"], .modal-container, .board-modal-container')) {
+                                break;
+                            }
+                        }
+                        
+                        // Step 2: Click on the PGN tab (poll up to 1.5s)
+                        for(let i = 0; i < 15; i++) {
+                            const tabs = Array.from(document.querySelectorAll('button, [role="tab"], .share-menu-tab, .board-tabs-tab, .share-menu-tab-component, .tab-component'));
+                            const pgnTab = tabs.find(el => el.textContent.trim().toUpperCase() === 'PGN' || el.innerText?.trim() === 'PGN');
+                            
+                            if (pgnTab) {
+                                console.log("MasterMind: Found PGN tab, clicking...");
+                                pgnTab.click();
+                                await new Promise(r => setTimeout(r, 500)); // wait for tab content to render
+                                break;
+                            }
+                            await new Promise(r => setTimeout(r, 100));
+                        }
+                        
+                        // Step 3: Trigger Copy buttons and intercept
+                        const modalContainers = document.querySelectorAll('.share-menu-modal, .modal-container, .board-modal-container, .share-menu-component');
+                        if (modalContainers.length > 0) {
+                            const copyBtns = modalContainers[0].querySelectorAll('button');
+                            for (let btn of copyBtns) {
+                                if (btn.className.includes('copy') || btn.getAttribute('aria-label')?.toLowerCase().includes('copy') || btn.querySelector('.icon-font-chess.copy')) {
+                                    console.log("MasterMind: Clicking copy button to trigger clipboard interceptor...");
+                                    btn.click();
+                                }
+                            }
+                        }
+
+                        // Poll for intercepted clipboard text (up to 1.5s)
+                        for(let i = 0; i < 15; i++) {
+                            if (pgnFromClipboard) {
+                                extractedPgn = pgnFromClipboard;
+                                break;
+                            }
+                            await new Promise(r => setTimeout(r, 100));
+                        }
+                        
+                        // If clipboard intercept failed, try fallback DOM extraction
+                        if (!extractedPgn) {
+                            console.log("MasterMind: Clipboard intercept missed, falling back to direct DOM text extraction...");
+                            // Next, try to find a textarea containing the PGN
+                            const textareas = document.querySelectorAll('textarea');
+                            for (let ta of textareas) {
+                                if (ta.value && ta.value.includes('[Event ') && ta.value.includes('[Site ')) {
+                                    extractedPgn = ta.value;
+                                    break;
+                                }
+                            }
+                            
+                            // Finally, check if it's rendered as text inside a div/span
+                            if (!extractedPgn) {
+                                const pgnElements = Array.from(document.querySelectorAll('div, span, p')).filter(el => 
+                                    el.innerText && el.innerText.includes('[Event "') && el.innerText.includes('1.') // MUST include moves '1.' so it doesn't truncate!
+                                );
+                                if (pgnElements.length > 0) {
+                                    pgnElements.sort((a, b) => a.innerText.length - b.innerText.length);
+                                    extractedPgn = pgnElements[0].innerText;
+                                }
+                            }
+                        }
+                        
+                        console.log("MasterMind: Extracted PGN successfully?", !!extractedPgn);
+                        
+                        // Close the modal to clean up UI
+                        const closeBtn = document.querySelector('button[aria-label="Close"]') || 
+                                         document.querySelector('.icon-font-chess.x')?.closest('button') ||
+                                         document.querySelector('.close-button');
+                        if (closeBtn) closeBtn.click();
+                    } else {
+                        console.log("MasterMind: Share button not found in DOM");
+                    }
+
+                    window.removeEventListener('message', messageListener);
+                } catch (domErr) {
+                    console.error("DOM Extraction Error:", domErr);
+                }
+
+                // Fallback to network fetch if DOM automation fails
+                if (!extractedPgn) {
+                    let fetchUrl = gameUrl.split('?')[0]; // Remove query params
+                    fetchUrl = fetchUrl.replace('/analysis/game/', '/game/'); // Convert analysis URL to standard game URL
+                    
+                    const response = await fetch(fetchUrl);
+                    const html = await response.text();
+                    
+                    // Parse the embedded PGN from the authenticated HTML response
+                    const pgnMatch = html.match(/"pgn":"([^"]+)"/);
+                    if (pgnMatch && pgnMatch[1]) {
+                        extractedPgn = pgnMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                    }
                 }
             } else if (gameUrl.includes('lichess.org')) {
                 const lichessMatch = gameUrl.match(/lichess\.org\/([a-zA-Z0-9]{8,12})/);
