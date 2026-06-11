@@ -1,7 +1,0 @@
-fastapi
-uvicorn[standard]
-python-chess
-requests
-google-generativeai
-redis
-python-dotenv

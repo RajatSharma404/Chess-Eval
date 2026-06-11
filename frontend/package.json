@@ -9,27 +9,30 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.17.0",
+    "chess.js": "^1.0.0-beta.8",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "framer-motion": "^11.11.11",
+    "lucide-react": "^0.456.0",
     "next": "15.0.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "react-chessboard": "^4.7.2",
-    "chess.js": "^1.0.0-beta.8",
+    "react-dom": "^19.0.0",
     "recharts": "^2.13.3",
-    "zustand": "^5.0.1",
-    "lucide-react": "^0.456.0",
-    "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.4",
-    "framer-motion": "^11.11.11"
+    "zustand": "^5.0.1"
   },
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
     "autoprefixer": "^10.4.20",
     "eslint": "^8",
-    "eslint-config-next": "15.0.3"
+    "eslint-config-next": "15.0.3",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
   }
 }

@@ -7,7 +7,17 @@ import { EvalBar } from '../../components/EvalBar';
 import { MoveList } from '../../components/MoveList';
 import { AccuracyChart } from '../../components/AccuracyChart';
 import { SuggestionCard } from '../../components/SuggestionCard';
+import ChatBox from '../../components/ChatBox';
 import { ChevronLeft, ChevronRight, Home, LayoutDashboard } from 'lucide-react';
+
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
+  constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error: Error) { return { hasError: true, error }; }
+  render() {
+    if (this.state.hasError) return <div className="p-10 text-red-500 font-mono"><h1>Runtime Error</h1><pre>{this.state.error?.stack}</pre></div>;
+    return this.props.children;
+  }
+}
 
 export default function AnalyzePage() {
   const { analysisResult, currentMoveIndex, setCurrentMoveIndex, reset } = useGameStore();
@@ -58,6 +68,7 @@ export default function AnalyzePage() {
   const currentMove = currentMoveIndex >= 0 ? analysisResult.moves[currentMoveIndex] : null;
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-[#050505] text-gray-100 flex flex-col font-sans selection:bg-emerald-500/30">
       {/* Premium Navbar */}
       <header className="border-b border-white/5 px-8 py-5 flex justify-between items-center bg-gray-900/30 backdrop-blur-2xl sticky top-0 z-50">
@@ -138,6 +149,9 @@ export default function AnalyzePage() {
         <section className="flex-1 flex flex-col gap-8 min-w-0">
           <SuggestionCard />
           <AccuracyChart />
+          <div className="flex-1 min-h-[300px]">
+            <ChatBox />
+          </div>
         </section>
 
         {/* Right Section: Move Archive */}
@@ -146,5 +160,6 @@ export default function AnalyzePage() {
         </section>
       </main>
     </div>
+    </ErrorBoundary>
   );
 }
