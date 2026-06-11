@@ -7,7 +7,6 @@ import { EvalBar } from '../../components/EvalBar';
 import { MoveList } from '../../components/MoveList';
 import { AccuracyChart } from '../../components/AccuracyChart';
 import { SuggestionCard } from '../../components/SuggestionCard';
-import ChatBox from '../../components/ChatBox';
 import { ChevronLeft, ChevronRight, Home, LayoutDashboard } from 'lucide-react';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
@@ -69,7 +68,7 @@ export default function AnalyzePage() {
 
   return (
     <ErrorBoundary>
-    <div className="min-h-screen bg-[#050505] text-gray-100 flex flex-col font-sans selection:bg-emerald-500/30">
+    <div className="h-screen bg-[#050505] text-gray-100 flex flex-col font-sans selection:bg-emerald-500/30 overflow-hidden">
       {/* Premium Navbar */}
       <header className="border-b border-white/5 px-8 py-5 flex justify-between items-center bg-gray-900/30 backdrop-blur-2xl sticky top-0 z-50">
         <div className="flex items-center gap-6">
@@ -149,13 +148,10 @@ export default function AnalyzePage() {
         <section className="flex-1 flex flex-col gap-8 min-w-0">
           <SuggestionCard />
           <AccuracyChart />
-          <div className="flex-1 min-h-[300px]">
-            <ChatBox />
-          </div>
         </section>
 
         {/* Right Section: Move Archive */}
-        <section className="w-full lg:w-[30%] xl:w-[25%] flex flex-col h-[700px] lg:h-auto">
+        <section className="w-full lg:w-[30%] xl:w-[25%] flex flex-col flex-1 lg:h-full overflow-hidden">
           <MoveList />
         </section>
       </main>

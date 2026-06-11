@@ -123,7 +123,7 @@ function HomeContent() {
   }, [searchParams]);
 
   return (
-    <main className="min-h-screen w-full bg-[#050505] flex flex-col items-center justify-center p-6 relative overflow-x-hidden">
+    <main className="h-screen w-full bg-[#050505] flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {isLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
           <div className="flex flex-col items-center gap-6">
@@ -145,22 +145,22 @@ function HomeContent() {
       <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-emerald-600/20 blur-[150px] rounded-full animate-pulse pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-cyan-600/10 blur-[150px] rounded-full animate-pulse duration-[5s] pointer-events-none" />
 
-      <div className="max-w-3xl w-full text-center space-y-6 z-10 pt-20 pb-10">
+      <div className="max-w-3xl w-full text-center space-y-6 z-10 pt-10 pb-4 flex-1 flex flex-col justify-center">
         <div className="space-y-4 flex flex-col items-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400 mb-2 animate-bounce">
             <Sparkles size={12} /> Powered by Stockfish 17 & Gemini 2.0
           </div>
-          <img src="/logo.png" alt="MasterMind Logo" className="w-20 h-20 sm:w-24 sm:h-24 object-contain drop-shadow-[0_0_30px_rgba(16,185,129,0.5)]" />
-          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter text-white leading-[0.9]">
+          <img src="/logo.png" alt="MasterMind Logo" className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_30px_rgba(16,185,129,0.5)]" />
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter text-white leading-[0.9]">
             MASTER<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-400">MIND</span>
           </h1>
-          <p className="text-gray-400 text-base sm:text-lg font-medium max-w-xl mx-auto leading-relaxed">
+          <p className="text-gray-400 text-sm sm:text-base font-medium max-w-xl mx-auto leading-relaxed">
             Free Chess Game Analysis & Review – Analyze Chess.com, Lichess & PGN Games Online
           </p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="max-w-2xl mx-auto mt-8 bg-gray-900/60 p-1 rounded-2xl flex items-center border border-white/10 shadow-xl backdrop-blur-xl">
+        <div className="max-w-2xl mx-auto mt-4 bg-gray-900/60 p-1 rounded-2xl flex items-center border border-white/10 shadow-xl backdrop-blur-xl">
           <button 
             type="button"
             onClick={() => { setActiveTab('chesscom'); setRecentGames([]); setFetchError(null); }}
@@ -186,7 +186,7 @@ function HomeContent() {
           </button>
         </div>
 
-        <form onSubmit={handleAnalyzeForm} className="relative group max-w-2xl mx-auto mt-4">
+        <form onSubmit={handleAnalyzeForm} className="relative group max-w-2xl mx-auto mt-2 shrink-0">
           <div className="absolute -inset-1 bg-gradient-to-r from-emerald-600 via-cyan-500 to-emerald-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200 animate-gradient-xy"></div>
           <div className="relative bg-gray-900/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 sm:p-3 flex flex-col sm:flex-row items-center shadow-3xl">
             
@@ -207,7 +207,7 @@ function HomeContent() {
                 <textarea 
                   rows={gameUrl.includes('[Event') ? 5 : 1}
                   placeholder="Paste PGN or Game URL"
-                  className="bg-transparent border-none focus:ring-0 text-white flex-1 p-3 sm:p-5 text-base sm:text-lg outline-none placeholder:text-gray-600 font-medium resize-none overflow-y-auto max-h-40 custom-scrollbar"
+                  className="bg-transparent border-none focus:ring-0 text-white flex-1 p-3 sm:p-5 text-base sm:text-lg outline-none placeholder:text-gray-600 font-medium resize-none overflow-y-auto max-h-40 scrollbar-hide"
                   value={gameUrl}
                   onChange={(e) => setGameUrl(e.target.value)}
                   onKeyDown={(e) => {
@@ -222,22 +222,22 @@ function HomeContent() {
 
             <button 
               type="submit"
-              className="w-full sm:w-auto mt-2 sm:mt-0 bg-white text-black px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-emerald-400 hover:text-white transition-all flex items-center justify-center gap-2 group/btn disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto mt-2 sm:mt-0 bg-white text-black px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-emerald-400 hover:text-white transition-all flex items-center justify-center gap-2 group/btn disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
               disabled={fetchingGames || isLoading || (activeTab === 'pgn' ? !gameUrl : !username)}
             >
               {fetchingGames ? <Loader2 className="w-5 h-5 animate-spin" /> : (activeTab === 'pgn' ? 'Analyze' : 'Fetch Recent Games')}
             </button>
           </div>
           {(error || fetchError) && (
-            <p className="absolute -bottom-8 left-0 right-0 text-red-400 text-xs font-bold uppercase tracking-widest text-center animate-pulse">
-              {error || fetchError}
-            </p>
+             <p className="absolute -bottom-8 left-0 right-0 text-red-400 text-xs font-bold uppercase tracking-widest text-center animate-pulse">
+               {error || fetchError}
+             </p>
           )}
         </form>
 
         {/* Quick Try Links */}
         {(activeTab === 'chesscom' || activeTab === 'lichess') && recentGames.length === 0 && (
-           <div className="flex items-center justify-center gap-4 mt-6 text-sm">
+           <div className="flex items-center justify-center gap-4 mt-2 text-sm shrink-0">
              <span className="text-gray-500">Quick Try:</span>
              <button type="button" onClick={() => { setUsername('MagnusCarlsen'); setActiveTab('chesscom'); }} className="text-emerald-400 hover:text-emerald-300 font-medium underline underline-offset-4 decoration-emerald-900">MagnusCarlsen</button>
              <button type="button" onClick={() => { setUsername('GothamChess'); setActiveTab('chesscom'); }} className="text-emerald-400 hover:text-emerald-300 font-medium underline underline-offset-4 decoration-emerald-900">GothamChess</button>
@@ -246,12 +246,12 @@ function HomeContent() {
 
         {/* Recent Games List */}
         {recentGames.length > 0 && (
-          <div className="max-w-2xl mx-auto mt-8 text-left space-y-3">
-            <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
+          <div className="max-w-2xl mx-auto mt-4 text-left space-y-3 flex-1 flex flex-col overflow-hidden w-full">
+            <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-2 shrink-0 flex items-center gap-3">
               <Sparkles size={16} className="text-emerald-500" />
               Recent Games for {username}
             </h3>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-2 pb-10">
+            <div className="space-y-2 flex-1 overflow-y-auto scrollbar-hide pr-2 pb-4">
               {recentGames.map((game, i) => (
                 <div 
                   key={i}

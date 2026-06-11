@@ -63,7 +63,7 @@ export const MoveList: React.FC = () => {
   };
 
   return (
-    <div ref={scrollRef} className="h-full overflow-y-auto bg-gray-900/50 backdrop-blur-md rounded-2xl p-4 custom-scrollbar border border-gray-800">
+    <div ref={scrollRef} className="h-full overflow-y-auto bg-gray-900/50 backdrop-blur-md rounded-2xl p-4 scrollbar-hide border border-gray-800">
       <table className="w-full text-sm text-gray-300">
         <thead className="sticky top-0 bg-gray-900/80 backdrop-blur-md z-10">
           <tr className="text-left text-gray-500 uppercase text-[10px] font-black tracking-widest">
