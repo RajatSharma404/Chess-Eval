@@ -14,70 +14,7 @@ function HomeContent() {
 
   const [activeTab, setActiveTab] = useState<'chesscom' | 'lichess' | 'pgn'>('chesscom');
   const [username, setUsername] = useState('');
-  const [fetchingGames, setFetchingGames] = useState(false);
-  const [recentGames, setRecentGames] = useState<any[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
-
-  const fetchChessComGames = async () => {
-    if (!username) return;
-    setFetchingGames(true);
-    setFetchError(null);
-    try {
-      // Get monthly archives
-      const archivesRes = await axios.get(`https://api.chess.com/pub/player/${username}/games/archives`);
-      const archives = archivesRes.data.archives;
-      if (!archives || archives.length === 0) throw new Error("No games found");
-      
-      const lastArchive = archives[archives.length - 1];
-      const gamesRes = await axios.get(lastArchive);
-      
-      const games = gamesRes.data.games.reverse().slice(0, 20); // get last 20 games
-      
-      const formatted = games.map((g: any) => ({
-        id: g.url,
-        white: g.white.username,
-        black: g.black.username,
-        result: g.white.result === 'win' ? '1-0' : g.black.result === 'win' ? '0-1' : '1/2-1/2',
-        pgn: g.pgn,
-        timeClass: g.time_class,
-        endTime: g.end_time
-      }));
-      setRecentGames(formatted);
-    } catch (err: any) {
-      setFetchError("Failed to fetch Chess.com games. Check username.");
-    } finally {
-      setFetchingGames(false);
-    }
-  };
-
-  const fetchLichessGames = async () => {
-    if (!username) return;
-    setFetchingGames(true);
-    setFetchError(null);
-    try {
-      const res = await axios.get(`https://lichess.org/api/games/user/${username}?max=20&pgnInJson=true`, {
-        headers: { Accept: 'application/x-ndjson' }
-      });
-      // Parse ndjson
-      const lines = res.data.split('\n').filter((l: string) => l.trim().length > 0);
-      const games = lines.map((l: string) => JSON.parse(l));
-      
-      const formatted = games.map((g: any) => ({
-        id: g.id,
-        white: g.players.white.user?.name || "Anonymous",
-        black: g.players.black.user?.name || "Anonymous",
-        result: g.winner === 'white' ? '1-0' : g.winner === 'black' ? '0-1' : '1/2-1/2',
-        pgn: g.pgn,
-        timeClass: g.perf,
-        endTime: g.lastMoveAt ? g.lastMoveAt / 1000 : Date.now() / 1000
-      }));
-      setRecentGames(formatted);
-    } catch (err: any) {
-      setFetchError("Failed to fetch Lichess games. Check username.");
-    } finally {
-      setFetchingGames(false);
-    }
-  };
 
   const handleAnalyzeGame = async (pgn: string) => {
     setGameUrl(pgn);
@@ -100,10 +37,10 @@ function HomeContent() {
     e.preventDefault();
     if (activeTab === 'pgn' && gameUrl) {
       handleAnalyzeGame(gameUrl);
-    } else if (activeTab === 'chesscom') {
-      fetchChessComGames();
-    } else if (activeTab === 'lichess') {
-      fetchLichessGames();
+    } else if (activeTab === 'chesscom' && username) {
+      router.push(`/history?user=${username}&platform=chesscom`);
+    } else if (activeTab === 'lichess' && username) {
+      router.push(`/history?user=${username}&platform=lichess`);
     }
   };
 
@@ -163,7 +100,7 @@ function HomeContent() {
         <div className="max-w-2xl mx-auto mt-4 bg-gray-900/60 p-1 rounded-2xl flex items-center border border-white/10 shadow-xl backdrop-blur-xl">
           <button 
             type="button"
-            onClick={() => { setActiveTab('chesscom'); setRecentGames([]); setFetchError(null); }}
+            onClick={() => { setActiveTab('chesscom'); setFetchError(null); }}
             className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'chesscom' ? 'bg-white text-black shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
           >
             <svg viewBox="0 0 100 100" className={`w-4 h-4 ${activeTab === 'chesscom' ? 'fill-black' : 'fill-gray-400'}`}><path d="M96.4,32.2c-0.8-2.6-3.1-4.3-5.8-4.3H74.3c-1.3,0-2.5,0.5-3.4,1.4l-11,11c-0.9,0.9-1.4,2.1-1.4,3.4v16.3c0,1.3,0.5,2.5,1.4,3.4l11,11c0.9,0.9,2.1,1.4,3.4,1.4h16.3c2.7,0,5-1.7,5.8-4.3c0.8-2.6,0.1-5.4-1.8-7.3l-11-11c-0.9-0.9-1.4-2.1-1.4-3.4s0.5-2.5,1.4-3.4l11-11C96.3,37.6,97.1,34.8,96.4,32.2z"/></svg>
@@ -171,7 +108,7 @@ function HomeContent() {
           </button>
           <button 
             type="button"
-            onClick={() => { setActiveTab('lichess'); setRecentGames([]); setFetchError(null); }}
+            onClick={() => { setActiveTab('lichess'); setFetchError(null); }}
             className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'lichess' ? 'bg-white text-black shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
           >
             <div className={`w-4 h-4 rounded-sm flex items-center justify-center ${activeTab === 'lichess' ? 'bg-black' : 'bg-gray-400'}`}><div className={`w-2 h-2 rotate-45 ${activeTab === 'lichess' ? 'bg-white' : 'bg-[#111]'}`}></div></div>
@@ -179,7 +116,7 @@ function HomeContent() {
           </button>
           <button 
             type="button"
-            onClick={() => { setActiveTab('pgn'); setRecentGames([]); setFetchError(null); }}
+            onClick={() => { setActiveTab('pgn'); setFetchError(null); }}
             className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all ${activeTab === 'pgn' ? 'bg-white text-black shadow-md' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
           >
             PGN / URL
@@ -223,9 +160,9 @@ function HomeContent() {
             <button 
               type="submit"
               className="w-full sm:w-auto mt-2 sm:mt-0 bg-white text-black px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-emerald-400 hover:text-white transition-all flex items-center justify-center gap-2 group/btn disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-              disabled={fetchingGames || isLoading || (activeTab === 'pgn' ? !gameUrl : !username)}
+              disabled={isLoading || (activeTab === 'pgn' ? !gameUrl : !username)}
             >
-              {fetchingGames ? <Loader2 className="w-5 h-5 animate-spin" /> : (activeTab === 'pgn' ? 'Analyze' : 'Fetch Recent Games')}
+              {activeTab === 'pgn' ? 'Analyze' : 'Fetch Recent Games'}
             </button>
           </div>
           {(error || fetchError) && (
@@ -236,67 +173,12 @@ function HomeContent() {
         </form>
 
         {/* Quick Try Links */}
-        {(activeTab === 'chesscom' || activeTab === 'lichess') && recentGames.length === 0 && (
+        {(activeTab === 'chesscom' || activeTab === 'lichess') && (
            <div className="flex items-center justify-center gap-4 mt-2 text-sm shrink-0">
              <span className="text-gray-500">Quick Try:</span>
              <button type="button" onClick={() => { setUsername('MagnusCarlsen'); setActiveTab('chesscom'); }} className="text-emerald-400 hover:text-emerald-300 font-medium underline underline-offset-4 decoration-emerald-900">MagnusCarlsen</button>
              <button type="button" onClick={() => { setUsername('GothamChess'); setActiveTab('chesscom'); }} className="text-emerald-400 hover:text-emerald-300 font-medium underline underline-offset-4 decoration-emerald-900">GothamChess</button>
            </div>
-        )}
-
-        {/* Recent Games List */}
-        {recentGames.length > 0 && (
-          <div className="max-w-2xl mx-auto mt-4 text-left space-y-3 flex-1 flex flex-col overflow-hidden w-full">
-            <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-2 shrink-0 flex items-center gap-3">
-              <Sparkles size={16} className="text-emerald-500" />
-              Recent Games for {username}
-            </h3>
-            <div className="space-y-2 flex-1 overflow-y-auto scrollbar-hide pr-2 pb-4">
-              {recentGames.map((game, i) => (
-                <div 
-                  key={i}
-                  onClick={() => handleAnalyzeGame(game.pgn || game.id)}
-                  className="bg-gray-900/50 backdrop-blur-md border border-white/5 p-4 rounded-xl hover:bg-gray-800 hover:border-emerald-500/30 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-black/50 flex items-center justify-center border border-white/5 group-hover:border-emerald-500/50">
-                      {activeTab === 'chesscom' ? (
-                        <svg viewBox="0 0 100 100" className="w-5 h-5 fill-[#81b64c]"><path d="M96.4,32.2c-0.8-2.6-3.1-4.3-5.8-4.3H74.3c-1.3,0-2.5,0.5-3.4,1.4l-11,11c-0.9,0.9-1.4,2.1-1.4,3.4v16.3c0,1.3,0.5,2.5,1.4,3.4l11,11c0.9,0.9,2.1,1.4,3.4,1.4h16.3c2.7,0,5-1.7,5.8-4.3c0.8-2.6,0.1-5.4-1.8-7.3l-11-11c-0.9-0.9-1.4-2.1-1.4-3.4s0.5-2.5,1.4-3.4l11-11C96.3,37.6,97.1,34.8,96.4,32.2z"/></svg>
-                      ) : (
-                        <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center"><div className="w-2 h-2 bg-black rotate-45"></div></div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">{game.white}</span>
-                        <span className="text-gray-500 text-xs">vs</span>
-                        <span className="font-bold text-white text-sm">{game.black}</span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className={`text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded ${
-                          (game.result === '1-0' && game.white.toLowerCase() === username.toLowerCase()) || 
-                          (game.result === '0-1' && game.black.toLowerCase() === username.toLowerCase()) 
-                            ? 'bg-emerald-500/20 text-emerald-400' 
-                            : game.result === '1/2-1/2' 
-                              ? 'bg-gray-500/20 text-gray-400' 
-                              : 'bg-red-500/20 text-red-400'
-                        }`}>
-                          {game.result === '1-0' && game.white.toLowerCase() === username.toLowerCase() ? 'WIN' : 
-                           game.result === '0-1' && game.black.toLowerCase() === username.toLowerCase() ? 'WIN' :
-                           game.result === '1/2-1/2' ? 'DRAW' : 'LOSS'}
-                        </span>
-                        <span className="text-gray-500 text-xs">{game.timeClass}</span>
-                        <span className="text-gray-600 text-xs">• {formatDistanceToNow(game.endTime * 1000)} ago</span>
-                      </div>
-                    </div>
-                  </div>
-                  <button type="button" className="bg-white/5 text-white p-2 rounded-lg group-hover:bg-emerald-500 transition-colors">
-                    <ArrowRight size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
         )}
       </div>
 

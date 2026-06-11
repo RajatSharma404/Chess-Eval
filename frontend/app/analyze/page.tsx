@@ -5,8 +5,9 @@ import { useGameStore } from '../../store/useGameStore';
 import { ChessBoard } from '../../components/ChessBoard';
 import { EvalBar } from '../../components/EvalBar';
 import { MoveList } from '../../components/MoveList';
-import { AccuracyChart } from '../../components/AccuracyChart';
 import { SuggestionCard } from '../../components/SuggestionCard';
+import { AccuracyChart } from '../../components/AccuracyChart';
+import { LiveEngine } from '../../components/LiveEngine';
 import { ChevronLeft, ChevronRight, Home, LayoutDashboard } from 'lucide-react';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
@@ -107,9 +108,9 @@ export default function AnalyzePage() {
 
       <main className="flex-1 flex flex-col lg:flex-row p-8 gap-10 overflow-hidden max-w-[1800px] mx-auto w-full">
         {/* Left Section: Board & Controls */}
-        <section className="flex flex-col gap-10 w-full lg:w-[40%] xl:w-[35%] items-center">
-          <div className="flex gap-10 w-full justify-center items-stretch">
-            <div className="h-[400px] lg:h-[500px] py-4">
+        <section className="flex flex-col gap-10 w-full lg:flex-1 items-center justify-center max-w-[800px] mx-auto">
+          <div className="flex gap-10 w-full justify-center items-stretch h-[500px] lg:h-[700px]">
+            <div className="py-4">
               <EvalBar 
                 evalScore={currentMove ? currentMove.eval_after_cp : 0} 
                 isBlunder={currentMove ? currentMove.classification === 'blunder' : false}
@@ -120,7 +121,7 @@ export default function AnalyzePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6 bg-gray-900/80 backdrop-blur-xl rounded-[2rem] p-3 border border-white/10 shadow-3xl">
+          <div className="flex items-center gap-6 bg-gray-900/80 backdrop-blur-xl rounded-[2rem] p-3 border border-white/10 shadow-3xl w-full max-w-[700px] justify-center">
             <button 
               disabled={currentMoveIndex <= -1}
               onClick={() => setCurrentMoveIndex(currentMoveIndex - 1)}
@@ -144,15 +145,12 @@ export default function AnalyzePage() {
           </div>
         </section>
 
-        {/* Middle Section: Insights & Trajectory */}
-        <section className="flex-1 flex flex-col gap-8 min-w-0">
-          <SuggestionCard />
-          <AccuracyChart />
-        </section>
-
-        {/* Right Section: Move Archive */}
-        <section className="w-full lg:w-[30%] xl:w-[25%] flex flex-col flex-1 lg:h-full overflow-hidden">
-          <MoveList />
+        {/* Right Section: Live Engine & Move Archive */}
+        <section className="w-full lg:w-[400px] xl:w-[450px] flex flex-col lg:h-full overflow-hidden gap-4">
+          <LiveEngine />
+          <div className="flex-1 overflow-hidden rounded-xl border border-white/10 bg-[#111]">
+            <MoveList />
+          </div>
         </section>
       </main>
     </div>

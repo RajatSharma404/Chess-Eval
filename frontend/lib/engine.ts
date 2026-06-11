@@ -74,6 +74,89 @@ export class StockfishEngine {
     });
   }
 
+  private currentContinuousHandler: ((event: MessageEvent) => void) | null = null;
+
+  public startContinuousAnalysis(fen: string, onUpdate: (lines: any[], bestEvalCp: number, depth: number) => void) {
+    this.stopAnalysis(); // stop any ongoing analysis
+    
+    let lines: any[] = [];
+    let bestEvalCp = 0;
+    let currentDepth = 0;
+
+    const handler = (event: MessageEvent) => {
+      const line = typeof event.data === 'string' ? event.data.trim() : '';
+      if (!line) return;
+
+      if (line.startsWith('info depth')) {
+        const depthMatch = line.match(/depth\s+(\d+)/);
+        const multipvMatch = line.match(/multipv\s+(\d+)/);
+        const scoreCpMatch = line.match(/cp\s+(-?\d+)/);
+        const scoreMateMatch = line.match(/mate\s+(-?\d+)/);
+        const pvMatch = line.match(/pv\s+(.+)/);
+
+        if (depthMatch && multipvMatch && pvMatch) {
+          const depth = parseInt(depthMatch[1], 10);
+          const multipv = parseInt(multipvMatch[1], 10);
+          currentDepth = depth;
+
+          let score = 0;
+          let isMate = false;
+          if (scoreCpMatch) {
+            score = parseInt(scoreCpMatch[1], 10);
+          } else if (scoreMateMatch) {
+            score = parseInt(scoreMateMatch[1], 10);
+            isMate = true;
+          }
+
+          if (multipv === 1) bestEvalCp = score;
+
+          const pvMoves = pvMatch[1].trim().split(/\s+/);
+          
+          lines[multipv - 1] = {
+            multipv,
+            scoreCp: score,
+            isMate,
+            pv: pvMoves
+          };
+
+          // Only trigger update if we have collected the lines for this depth
+          // or occasionally to keep UI responsive
+          if (lines.filter(Boolean).length >= 1) {
+            onUpdate([...lines].filter(Boolean), bestEvalCp, currentDepth);
+          }
+        }
+      }
+    };
+
+    this.currentContinuousHandler = handler;
+    this.worker.addEventListener('message', handler);
+
+    const commands = [
+      'stop',
+      'setoption name MultiPV value 3',
+      `position fen ${fen}`,
+      `go infinite`
+    ];
+
+    commands.forEach((cmd) => {
+      if (this.isReady) {
+        this.worker.postMessage(cmd);
+      } else {
+        this.messageQueue.push(cmd);
+      }
+    });
+  }
+
+  public stopAnalysis() {
+    if (this.currentContinuousHandler) {
+      this.worker.removeEventListener('message', this.currentContinuousHandler);
+      this.currentContinuousHandler = null;
+    }
+    if (this.isReady) {
+      this.worker.postMessage('stop');
+    }
+  }
+
   public quit() {
     this.worker.postMessage('quit');
   }
