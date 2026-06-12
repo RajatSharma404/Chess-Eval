@@ -3,7 +3,7 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Loader2, Share2, RefreshCw, Download, Settings, ChevronRight } from 'lucide-react';
+import { Loader2, Share2, RefreshCw, Download, Settings, ChevronRight, X } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { analyzeGame } from '../../lib/api';
 
@@ -16,6 +16,12 @@ function HistoryContent() {
   const [games, setGames] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [availableMonths, setAvailableMonths] = useState<{label: string, value: string}[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [importing, setImporting] = useState(false);
+  const [fetchingMonths, setFetchingMonths] = useState(false);
 
   const { setGameUrl, setAnalysisResult, setLoading: setEngineLoading, setProgressStatus, progressStatus, isLoading: engineLoading } = useGameStore();
 
@@ -95,20 +101,56 @@ function HistoryContent() {
     }
   };
 
-  const importGames = async () => {
-    if (!username) return;
-    setLoading(true);
+  const handleOpenImportModal = async () => {
+    setIsImportModalOpen(true);
+    setFetchingMonths(true);
     setError(null);
     try {
       if (platform === 'chesscom') {
         const archivesRes = await axios.get(`https://api.chess.com/pub/player/${username}/games/archives`);
-        const archives = archivesRes.data.archives;
-        if (!archives || archives.length === 0) throw new Error("No games found");
-        
-        const lastArchive = archives[archives.length - 1];
-        const gamesRes = await axios.get(lastArchive);
-        
-        const fetchedGames = gamesRes.data.games.reverse(); // fetch ALL games from the month
+        const arch = archivesRes.data.archives || [];
+        const options = arch.reverse().map((url: string) => {
+          const parts = url.split('/');
+          const year = parts[parts.length - 2];
+          const month = parts[parts.length - 1];
+          const date = new Date(parseInt(year), parseInt(month) - 1);
+          return {
+            label: format(date, 'MMMM yyyy'),
+            value: url
+          };
+        });
+        setAvailableMonths(options);
+        if (options.length > 0) setSelectedMonth(options[0].value);
+      } else {
+        const options = [];
+        const now = new Date();
+        for(let i=0; i<24; i++) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          options.push({
+            label: format(d, 'MMMM yyyy'),
+            value: `${d.getFullYear()}-${d.getMonth()}`
+          });
+        }
+        setAvailableMonths(options);
+        if (options.length > 0) setSelectedMonth(options[0].value);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to fetch available months.");
+    } finally {
+      setFetchingMonths(false);
+    }
+  };
+
+  const handleImportGames = async () => {
+    if (!username || !selectedMonth) return;
+    setImporting(true);
+    setError(null);
+    setLoading(true);
+    try {
+      if (platform === 'chesscom') {
+        const gamesRes = await axios.get(selectedMonth);
+        const fetchedGames = gamesRes.data.games.reverse();
         
         const formatted = fetchedGames.map((g: any) => ({
           id: g.url,
@@ -124,7 +166,14 @@ function HistoryContent() {
         }));
         setGames(formatted);
       } else {
-        const res = await axios.get(`https://lichess.org/api/games/user/${username}?max=100&pgnInJson=true`, {
+        const [yearStr, monthStr] = selectedMonth.split('-');
+        const year = parseInt(yearStr);
+        const month = parseInt(monthStr);
+        
+        const since = new Date(year, month, 1).getTime();
+        const until = new Date(year, month + 1, 0, 23, 59, 59, 999).getTime();
+
+        const res = await axios.get(`https://lichess.org/api/games/user/${username}?max=100&pgnInJson=true&since=${since}&until=${until}`, {
           headers: { Accept: 'application/x-ndjson' }
         });
         const lines = res.data.split('\n').filter((l: string) => l.trim().length > 0);
@@ -144,9 +193,11 @@ function HistoryContent() {
         }));
         setGames(formatted);
       }
+      setIsImportModalOpen(false);
     } catch (err: any) {
       setError("Failed to import games.");
     } finally {
+      setImporting(false);
       setLoading(false);
     }
   };
@@ -194,7 +245,7 @@ function HistoryContent() {
             <div className="text-sm text-gray-400 font-medium">
               Showing 1-{games.length} of {games.length} games
             </div>
-            <button onClick={importGames} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-colors text-sm font-bold">
+            <button onClick={handleOpenImportModal} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-colors text-sm font-bold">
               <Download size={16} /> Import Games
             </button>
           </div>
@@ -295,6 +346,51 @@ function HistoryContent() {
           )}
         </div>
       </div>
+
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <button 
+              onClick={() => setIsImportModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl font-bold text-white mb-6">Import Games</h2>
+            
+            {fetchingMonths ? (
+              <div className="flex flex-col items-center justify-center py-8 gap-4">
+                <Loader2 className="w-8 h-8 animate-spin text-yellow-500" />
+                <p className="text-gray-400 text-sm">Fetching available months...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Select Month</label>
+                  <select 
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500/50 appearance-none"
+                  >
+                    {availableMonths.map((m, i) => (
+                      <option key={i} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button 
+                  onClick={handleImportGames}
+                  disabled={importing || !selectedMonth}
+                  className="w-full flex items-center justify-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {importing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download size={18} />}
+                  {importing ? 'Importing...' : 'Import'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
