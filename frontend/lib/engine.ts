@@ -1,90 +1,85 @@
 export class StockfishEngine {
-  private worker: Worker;
-  private isReady: boolean = false;
-  private messageQueue: string[] = [];
+  private abortController: AbortController | null = null;
+  private currentEventSource: EventSource | null = null;
 
-  constructor() {
-    this.worker = new Worker('/stockfish.js');
-    this.worker.onmessage = this.onMessage.bind(this);
-    this.worker.postMessage('uci');
-  }
-
-  private onMessage(event: MessageEvent) {
-    const line = event.data;
-    if (line === 'uciok') {
-      this.isReady = true;
-      this.messageQueue.forEach((msg) => this.worker.postMessage(msg));
-      this.messageQueue = [];
-    }
-  }
+  constructor() {}
 
   public analyzePosition(fen: string, depth: number = 15): Promise<any> {
     return new Promise((resolve) => {
-      let topMoves: any[] = [];
       let bestMove: string | null = null;
       let evalCp: number | null = null;
+      
+      this.abortController = new AbortController();
+      
+      fetch(`/api/engine?fen=${encodeURIComponent(fen)}&depth=${depth}&mode=single`, {
+        signal: this.abortController.signal
+      }).then(async (response) => {
+        if (!response.body) return resolve({ bestMove, evalCp: 0 });
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          
+          for (const rawLine of lines) {
+            if (!rawLine.startsWith('data: ')) continue;
+            const line = rawLine.replace('data: ', '').trim();
+            
+            if (line.startsWith('info depth')) {
+              const pvMatch = line.match(/pv\s+([a-h1-8]{4,5})/);
+              const cpMatch = line.match(/cp\s+(-?\d+)/);
+              const mateMatch = line.match(/mate\s+(-?\d+)/);
+              const multipvMatch = line.match(/multipv\s+(\d+)/);
 
-      const handler = (event: MessageEvent) => {
-        const line = event.data;
-        if (line.startsWith('info depth')) {
-          // Parse info line
-          const pvMatch = line.match(/pv\s+([a-h1-8]{4,5})/);
-          const cpMatch = line.match(/cp\s+(-?\d+)/);
-          const mateMatch = line.match(/mate\s+(-?\d+)/);
-          const multipvMatch = line.match(/multipv\s+(\d+)/);
+              if (pvMatch) {
+                const mv = pvMatch[1];
+                let score = 0;
+                if (cpMatch) score = parseInt(cpMatch[1], 10);
+                else if (mateMatch) score = parseInt(mateMatch[1], 10) * 10000;
 
-          if (pvMatch) {
-            const mv = pvMatch[1];
-            let score = 0;
-            if (cpMatch) score = parseInt(cpMatch[1], 10);
-            else if (mateMatch) score = parseInt(mateMatch[1], 10) * 10000; // approximation
-
-            if (!multipvMatch || multipvMatch[1] === '1') {
-              bestMove = mv;
-              evalCp = score;
+                if (!multipvMatch || multipvMatch[1] === '1') {
+                  bestMove = mv;
+                  evalCp = score;
+                }
+              }
+            } else if (line.startsWith('bestmove')) {
+              resolve({ bestMove, evalCp: evalCp || 0 });
+              this.abortController?.abort();
+              return;
             }
           }
-        } else if (line.startsWith('bestmove')) {
-          this.worker.removeEventListener('message', handler);
-          resolve({ bestMove, evalCp });
         }
-      };
+        resolve({ bestMove, evalCp: evalCp || 0 });
+      }).catch((e) => {
+        resolve({ bestMove, evalCp: 0 });
+      });
       
-      // Safety timeout (e.g. 10 seconds)
       setTimeout(() => {
-        this.worker.removeEventListener('message', handler);
+        this.abortController?.abort();
         resolve({ bestMove, evalCp: evalCp || 0 });
       }, 10000);
-
-      this.worker.addEventListener('message', handler);
-      
-      const commands = [
-        'setoption name MultiPV value 3',
-        `position fen ${fen}`,
-        `go depth ${depth}`
-      ];
-
-      commands.forEach((cmd) => {
-        if (this.isReady) {
-          this.worker.postMessage(cmd);
-        } else {
-          this.messageQueue.push(cmd);
-        }
-      });
     });
   }
 
-  private currentContinuousHandler: ((event: MessageEvent) => void) | null = null;
-
   public startContinuousAnalysis(fen: string, onUpdate: (lines: any[], bestEvalCp: number, depth: number) => void) {
-    this.stopAnalysis(); // stop any ongoing analysis
+    this.stopAnalysis();
     
     let lines: any[] = [];
     let bestEvalCp = 0;
     let currentDepth = 0;
 
-    const handler = (event: MessageEvent) => {
-      const line = typeof event.data === 'string' ? event.data.trim() : '';
+    const es = new EventSource(`/api/engine?fen=${encodeURIComponent(fen)}&mode=continuous`);
+    this.currentEventSource = es;
+    
+    es.onmessage = (event) => {
+      const line = event.data;
       if (!line) return;
 
       if (line.startsWith('info depth')) {
@@ -119,45 +114,26 @@ export class StockfishEngine {
             pv: pvMoves
           };
 
-          // Only trigger update if we have collected the lines for this depth
-          // or occasionally to keep UI responsive
           if (lines.filter(Boolean).length >= 1) {
             onUpdate([...lines].filter(Boolean), bestEvalCp, currentDepth);
           }
         }
       }
     };
-
-    this.currentContinuousHandler = handler;
-    this.worker.addEventListener('message', handler);
-
-    const commands = [
-      'stop',
-      'setoption name MultiPV value 3',
-      `position fen ${fen}`,
-      `go infinite`
-    ];
-
-    commands.forEach((cmd) => {
-      if (this.isReady) {
-        this.worker.postMessage(cmd);
-      } else {
-        this.messageQueue.push(cmd);
-      }
-    });
   }
 
   public stopAnalysis() {
-    if (this.currentContinuousHandler) {
-      this.worker.removeEventListener('message', this.currentContinuousHandler);
-      this.currentContinuousHandler = null;
+    if (this.currentEventSource) {
+      this.currentEventSource.close();
+      this.currentEventSource = null;
     }
-    if (this.isReady) {
-      this.worker.postMessage('stop');
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
     }
   }
 
   public quit() {
-    this.worker.postMessage('quit');
+    this.stopAnalysis();
   }
 }

@@ -54,30 +54,39 @@ export function LiveEngine() {
       // Convert moves to SAN for display
       const formattedLines = lines.map(line => {
         const tempChess = new Chess(currentFen);
-        const sanMoves = [];
+        let sanSequence = '';
         let firstMoveSan = '';
         let firstMovePiece = 'p';
+        const pvMoves: any[] = [];
 
-        for (let i = 0; i < Math.min(line.pv.length, 6); i++) {
+        for (let i = 0; i < Math.min(line.pv.length, 10); i++) {
           const moveUci = line.pv[i];
+          const isWhite = tempChess.turn() === 'w';
+          const moveNumStr = isWhite ? `${tempChess.moveNumber()}. ` : (i === 0 ? `${tempChess.moveNumber()}... ` : '');
+          
           try {
             const moveObj = tempChess.move({
               from: moveUci.substring(0, 2),
               to: moveUci.substring(2, 4),
               promotion: moveUci.length === 5 ? moveUci[4] : undefined
             });
+            const san = moveObj ? moveObj.san : moveUci;
             if (i === 0) {
-              firstMoveSan = moveObj ? moveObj.san : moveUci;
+              firstMoveSan = san;
               firstMovePiece = moveObj ? moveObj.piece : 'p';
             }
-            sanMoves.push(moveObj ? moveObj.san : moveUci);
+            sanSequence += moveNumStr + san + ' ';
+            pvMoves.push({
+              move_san: san,
+              fen_after: tempChess.fen(),
+              move_uci: moveUci
+            });
           } catch (e) {
-            // Invalid move in PV (rare but possible during rapid updates)
             if (i === 0) {
               firstMoveSan = moveUci;
-              firstMovePiece = 'p'; // fallback
+              firstMovePiece = 'p';
             }
-            sanMoves.push(moveUci);
+            sanSequence += moveNumStr + moveUci + ' ';
             break;
           }
         }
@@ -86,7 +95,8 @@ export function LiveEngine() {
           ...line,
           firstMoveSan,
           firstMovePiece,
-          sanMoves: sanMoves.join(' '),
+          sanSequence: sanSequence.trim(),
+          pvMoves,
           displayScore: isWhiteTurn ? line.scoreCp : -line.scoreCp
         };
       });
@@ -115,12 +125,38 @@ export function LiveEngine() {
     }
   };
 
+  const handleLineClick = (line: any) => {
+    if (!analysisResult) return;
+    const baseMoves = analysisResult.moves.slice(0, currentMoveIndex + 1);
+    const newMoves = [...baseMoves];
+    
+    // Convert pvMoves to the Move interface format roughly
+    line.pvMoves.forEach((m: any, i: number) => {
+      newMoves.push({
+        move_number: 0,
+        color: i % 2 === 0 ? 'white' : 'black',
+        move_san: m.move_san,
+        move_uci: m.move_uci,
+        fen_before: '',
+        fen_after: m.fen_after,
+        eval_before_cp: 0,
+        eval_after_cp: line.displayScore * 100,
+        cp_loss: 0,
+        classification: 'book',
+        best_move_san: '',
+        best_move_uci: ''
+      } as any);
+    });
+    
+    useGameStore.getState().branchGame(newMoves, baseMoves.length);
+  };
+
   return (
-    <div className="flex-none flex flex-col bg-[#111] rounded-xl border border-white/10 overflow-hidden shadow-2xl">
+    <div className="flex-none flex flex-col bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
       {/* Tabs */}
-      <div className="flex items-center text-sm font-bold text-gray-500 border-b border-white/10">
+      <div className="flex items-center text-sm font-bold text-gray-500 border-b border-white/10 bg-black/20">
         <button className="flex-1 py-4 hover:text-gray-300 transition-colors">Report</button>
-        <button className="flex-1 py-4 text-yellow-500 border-b-2 border-yellow-500">Analysis</button>
+        <button className="flex-1 py-4 text-yellow-400 border-b-2 border-yellow-400">Analysis</button>
         <button className="flex-1 py-4 hover:text-gray-300 transition-colors">Coach</button>
         <button className="flex-1 py-4 hover:text-gray-300 transition-colors">Settings</button>
       </div>
@@ -132,48 +168,52 @@ export function LiveEngine() {
             {/* Toggle */}
             <button 
               onClick={() => setEngineOn(!engineOn)}
-              className={`w-12 h-6 rounded-full flex items-center p-1 transition-colors ${engineOn ? 'bg-yellow-500' : 'bg-gray-600'}`}
+              className={`w-12 h-6 rounded-full flex items-center p-1 transition-colors shadow-inner ${engineOn ? 'bg-yellow-500' : 'bg-gray-600'}`}
             >
-              <div className={`w-4 h-4 bg-white rounded-full transition-transform ${engineOn ? 'translate-x-6' : 'translate-x-0'}`} />
+              <div className={`w-4 h-4 bg-white rounded-full transition-transform shadow ${engineOn ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
-            <span className="text-2xl font-black text-white">
+            <span className="text-2xl font-black text-white drop-shadow-md">
               {formatScore(evalCp, isMate)}
             </span>
           </div>
           <div className="flex items-center gap-4 text-right">
             <div>
-              <div className="text-yellow-500 font-bold text-sm">Depth {depth}</div>
-              <div className="text-gray-500 text-[10px] font-bold">SF 17.1 Lite</div>
+              <div className="text-yellow-400 font-bold text-sm">Depth {depth}</div>
+              <div className="text-cyan-400 text-[10px] font-black tracking-wider uppercase">Stockfish 17 (AVX2)</div>
             </div>
-            <Settings className="text-gray-500 hover:text-white cursor-pointer transition-colors" size={20} />
+            <Settings className="text-gray-400 hover:text-white cursor-pointer transition-colors hover:rotate-90 duration-300" size={20} />
           </div>
         </div>
 
         {/* Follow Best Line Button */}
-        <button className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors mb-6 shadow-lg shadow-yellow-500/20 active:scale-95">
+        <button className="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-400 hover:to-yellow-300 text-black font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all mb-6 shadow-[0_0_15px_rgba(234,179,8,0.3)] hover:shadow-[0_0_25px_rgba(234,179,8,0.5)] active:scale-[0.98]">
           <FastForward size={18} /> Follow Best Line
         </button>
 
         {/* Engine Lines */}
-        <div className="space-y-4">
+        <div className="space-y-2">
           {engineLines.map((line, idx) => (
-            <div key={idx} className="flex items-center gap-3 text-sm group cursor-pointer">
-              <div className={`w-6 h-6 flex items-center justify-center font-bold text-lg ${idx === 0 ? 'text-yellow-500' : 'text-yellow-500/70'}`}>
+            <div 
+              key={idx} 
+              onClick={() => handleLineClick(line)}
+              className="flex items-start gap-3 text-sm group cursor-pointer hover:bg-white/5 p-2 -mx-2 rounded-lg transition-all border border-transparent hover:border-white/10"
+            >
+              <div className={`w-6 h-6 flex items-center justify-center font-black text-lg mt-0.5 drop-shadow-md ${idx === 0 ? 'text-yellow-400' : 'text-cyan-400/80'}`}>
                 {getPieceIcon(line.firstMovePiece)}
               </div>
-              <div className="font-bold text-white w-8">
+              <div className="font-black text-white w-8 mt-1">
                 {line.firstMoveSan}
               </div>
-              <div className={`px-2 py-0.5 rounded text-xs font-bold ${line.displayScore > 0 ? 'bg-white text-black' : 'bg-black text-white border border-gray-600'}`}>
+              <div className={`px-2 py-0.5 mt-0.5 rounded text-[10px] font-black shadow-sm ${line.displayScore > 0 ? 'bg-white text-black' : 'bg-gray-800 text-white border border-gray-600'}`}>
                 {formatScore(line.displayScore, line.isMate)}
               </div>
-              <div className="text-gray-400 font-medium truncate flex-1 group-hover:text-white transition-colors">
-                {line.sanMoves.split(' ').slice(1).join(' ')}
+              <div className="text-gray-400 font-medium flex-1 group-hover:text-cyan-50 transition-colors text-xs leading-relaxed line-clamp-1 group-hover:line-clamp-none">
+                {line.sanSequence.split(' ').slice(1).join(' ')}
               </div>
             </div>
           ))}
           {engineLines.length === 0 && engineOn && (
-            <div className="text-center text-gray-500 py-4 font-bold animate-pulse">Calculating lines...</div>
+            <div className="text-center text-cyan-400 py-6 font-black tracking-widest text-xs uppercase animate-pulse">Calculating lines...</div>
           )}
         </div>
       </div>

@@ -5,8 +5,6 @@ import { useGameStore } from '../../store/useGameStore';
 import { ChessBoard } from '../../components/ChessBoard';
 import { EvalBar } from '../../components/EvalBar';
 import { MoveList } from '../../components/MoveList';
-import { SuggestionCard } from '../../components/SuggestionCard';
-import { AccuracyChart } from '../../components/AccuracyChart';
 import { LiveEngine } from '../../components/LiveEngine';
 import { ChevronLeft, ChevronRight, Home, LayoutDashboard } from 'lucide-react';
 
@@ -21,6 +19,7 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 
 export default function AnalyzePage() {
   const { analysisResult, currentMoveIndex, setCurrentMoveIndex, reset } = useGameStore();
+  const [boardOrientation, setBoardOrientation] = React.useState<'white' | 'black'>('white');
   const router = useRouter();
 
   useEffect(() => {
@@ -31,6 +30,10 @@ export default function AnalyzePage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        setBoardOrientation(o => o === 'white' ? 'black' : 'white');
+      }
+      
       if (!analysisResult) return;
       if (e.key === 'ArrowRight' && currentMoveIndex < analysisResult.moves.length - 1) {
         setCurrentMoveIndex(currentMoveIndex + 1);
@@ -69,86 +72,161 @@ export default function AnalyzePage() {
 
   return (
     <ErrorBoundary>
-    <div className="h-screen bg-[#050505] text-gray-100 flex flex-col font-sans selection:bg-emerald-500/30 overflow-hidden">
+    <div className="h-screen bg-[#050505] text-gray-100 flex flex-col font-sans selection:bg-cyan-500/30 overflow-hidden">
       {/* Premium Navbar */}
-      <header className="border-b border-white/5 px-8 py-5 flex justify-between items-center bg-gray-900/30 backdrop-blur-2xl sticky top-0 z-50">
+      <header className="border-b border-white/5 px-6 py-4 flex justify-between items-center bg-gray-900/40 backdrop-blur-2xl sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-6">
           <button 
             onClick={() => { reset(); router.push('/'); }} 
-            className="p-3 hover:bg-white/5 rounded-xl transition-all group active:scale-95 border border-transparent hover:border-white/10"
+            className="p-2.5 hover:bg-white/5 rounded-xl transition-all group active:scale-95 border border-transparent hover:border-white/10"
           >
-            <Home size={20} className="text-gray-400 group-hover:text-white" />
+            <Home size={20} className="text-gray-400 group-hover:text-cyan-400" />
           </button>
           <div className="h-8 w-[1px] bg-white/10" />
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
             <div>
               <h1 className="text-xs font-black text-white uppercase tracking-[0.3em]">Analysis Laboratory</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Stockfish 17 Engine Online</p>
+              <div className="flex items-center gap-2 mt-1 group relative cursor-help">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Stockfish 17 AVX2 Online</p>
+                
+                {/* Hover Tooltip for Engine Stats */}
+                <div className="absolute top-full left-0 mt-2 p-3 bg-gray-900 border border-white/10 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity w-48 z-50">
+                   <div className="text-[10px] text-gray-400 font-black tracking-widest uppercase mb-1">Engine Stats</div>
+                   <div className="flex justify-between text-xs font-mono"><span className="text-gray-500">Nodes/sec:</span> <span className="text-white">Max</span></div>
+                   <div className="flex justify-between text-xs font-mono"><span className="text-gray-500">Hash:</span> <span className="text-white">1024 MB</span></div>
+                   <div className="flex justify-between text-xs font-mono"><span className="text-gray-500">Threads:</span> <span className="text-white">4</span></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 px-4 py-2 bg-gray-800/50 rounded-xl border border-white/10">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-white rounded-sm"></div>
-              <span className="text-xl font-black text-white">{analysisResult.white_accuracy.toFixed(1)}<span className="text-xs text-gray-400">%</span></span>
+          {/* Accuracy Badges with Avatars */}
+          <div className="flex items-center bg-gray-900/60 rounded-full border border-white/10 p-1 shadow-inner">
+            <div className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full hover:bg-white/5 transition-colors cursor-help" title="White Accuracy">
+              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center font-bold text-black text-[10px] shadow-sm">W</div>
+              <div className="flex flex-col">
+                <span className="text-xs font-black text-white leading-none">{analysisResult.white_accuracy.toFixed(1)}%</span>
+                <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest mt-0.5">White</span>
+              </div>
             </div>
-            <div className="h-6 w-[1px] bg-white/10 mx-2" />
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-black text-gray-300">{analysisResult.black_accuracy.toFixed(1)}<span className="text-xs text-gray-500">%</span></span>
-              <div className="w-3 h-3 bg-black border border-gray-600 rounded-sm"></div>
+            <div className="h-6 w-[1px] bg-white/10 mx-1" />
+            <div className="flex items-center gap-3 pr-2 pl-4 py-1.5 rounded-full hover:bg-white/5 transition-colors cursor-help" title="Black Accuracy">
+              <div className="flex flex-col text-right">
+                <span className="text-xs font-black text-gray-300 leading-none">{analysisResult.black_accuracy.toFixed(1)}%</span>
+                <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest mt-0.5">Black</span>
+              </div>
+              <div className="w-6 h-6 bg-gray-800 border border-gray-600 rounded-full flex items-center justify-center font-bold text-white text-[10px] shadow-sm">B</div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col lg:flex-row p-8 gap-10 overflow-hidden max-w-[1800px] mx-auto w-full">
-        {/* Left Section: Board & Controls */}
-        <section className="flex flex-col gap-10 w-full lg:flex-1 items-center justify-center max-w-[800px] mx-auto">
-          <div className="flex gap-10 w-full justify-center items-stretch h-[500px] lg:h-[700px]">
-            <div className="py-4">
-              <EvalBar 
-                evalScore={currentMove ? currentMove.eval_after_cp : 0} 
-                isBlunder={currentMove ? currentMove.classification === 'blunder' : false}
-              />
-            </div>
-            <div className="flex-1 w-full max-w-[700px]">
-              <ChessBoard />
-            </div>
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(600px,1fr)_400px] xl:grid-cols-[280px_minmax(500px,1fr)_400px] p-6 gap-6 overflow-y-auto max-w-[1800px] mx-auto w-full">
+        {/* Left Column: Sidebar (Hidden on smaller screens) */}
+        <section className="hidden xl:flex flex-col gap-4 h-full">
+           <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl">
+              <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <LayoutDashboard size={14} /> Match Info
+              </h2>
+              <div className="flex flex-col gap-3">
+                 <div className="flex justify-between items-center bg-black/20 p-3 rounded-xl border border-white/5">
+                   <div className="flex items-center gap-3">
+                     <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center font-bold text-black text-sm shadow-md">W</div>
+                     <div>
+                       <div className="font-bold text-sm text-white">White Player</div>
+                       <div className="text-[10px] font-mono text-gray-400">1500 ELO</div>
+                     </div>
+                   </div>
+                 </div>
+                 <div className="flex justify-between items-center bg-black/20 p-3 rounded-xl border border-white/5">
+                   <div className="flex items-center gap-3">
+                     <div className="w-8 h-8 bg-gray-800 border border-gray-600 rounded-lg flex items-center justify-center font-bold text-white text-sm shadow-md">B</div>
+                     <div>
+                       <div className="font-bold text-sm text-gray-300">Black Player</div>
+                       <div className="text-[10px] font-mono text-gray-500">1500 ELO</div>
+                     </div>
+                   </div>
+                 </div>
+              </div>
+           </div>
+           
+           <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl flex-1">
+              <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Opening Setup</h2>
+              <p className="text-sm font-bold text-cyan-50 leading-relaxed bg-cyan-900/20 p-3 rounded-xl border border-cyan-500/20">{analysisResult.opening}</p>
+           </div>
+        </section>
+
+        {/* Center Column: Board & Controls */}
+        <section className="flex flex-col gap-4 w-full items-center justify-start max-w-[800px] mx-auto xl:max-w-none">
+          <div className="w-full max-w-[750px] relative">
+             <ChessBoard boardOrientation={boardOrientation} />
           </div>
 
-          <div className="flex items-center gap-6 bg-gray-900/80 backdrop-blur-xl rounded-[2rem] p-3 border border-white/10 shadow-3xl w-full max-w-[700px] justify-center">
-            <button 
-              disabled={currentMoveIndex <= -1}
-              onClick={() => setCurrentMoveIndex(currentMoveIndex - 1)}
-              className="p-5 hover:bg-white/5 disabled:opacity-20 rounded-2xl transition-all active:scale-90"
-            >
-              <ChevronLeft size={28} />
-            </button>
-            <div className="px-10 text-center min-w-[150px]">
-               <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-1">Position</p>
-               <p className="text-2xl font-mono font-black text-white">
+          <div className="flex items-center justify-between bg-gray-900/60 backdrop-blur-xl rounded-2xl p-3 border border-white/10 shadow-2xl w-full max-w-[750px]">
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={currentMoveIndex <= -1}
+                onClick={() => setCurrentMoveIndex(-1)}
+                className="p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90"
+                title="Go to Start"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button 
+                disabled={currentMoveIndex <= -1}
+                onClick={() => setCurrentMoveIndex(currentMoveIndex - 1)}
+                className="p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90 bg-white/5"
+                title="Previous Move (Left Arrow)"
+              >
+                <ChevronLeft size={24} />
+              </button>
+            </div>
+            
+            <div className="px-6 text-center min-w-[120px]">
+               <p className="text-[9px] text-gray-500 uppercase font-black tracking-[0.2em] mb-0.5">Position</p>
+               <p className="text-xl font-mono font-black text-white">
                  {currentMoveIndex === -1 ? 'Start' : currentMove?.move_san}
                </p>
             </div>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={currentMoveIndex >= analysisResult.moves.length - 1}
+                onClick={() => setCurrentMoveIndex(currentMoveIndex + 1)}
+                className="p-3 hover:bg-cyan-500/20 disabled:opacity-20 rounded-xl transition-all active:scale-90 bg-cyan-500/10 text-cyan-400"
+                title="Next Move (Right Arrow)"
+              >
+                <ChevronRight size={24} />
+              </button>
+              <button 
+                disabled={currentMoveIndex >= analysisResult.moves.length - 1}
+                onClick={() => setCurrentMoveIndex(analysisResult.moves.length - 1)}
+                className="p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90"
+                title="Go to End"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+
+            <div className="w-[1px] h-8 bg-white/10 mx-2 hidden sm:block"></div>
+            
             <button 
-              disabled={currentMoveIndex >= analysisResult.moves.length - 1}
-              onClick={() => setCurrentMoveIndex(currentMoveIndex + 1)}
-              className="p-5 hover:bg-white/5 disabled:opacity-20 rounded-2xl transition-all active:scale-90"
+              onClick={() => setBoardOrientation(o => o === 'white' ? 'black' : 'white')}
+              className="px-4 py-2.5 bg-gray-800 text-gray-300 font-bold rounded-xl hover:bg-gray-700 transition-all border border-gray-600 shadow-md text-[10px] uppercase tracking-widest hidden sm:flex items-center gap-2 active:scale-95"
+              title="Flip Board (Shortcut: F)"
             >
-              <ChevronRight size={28} />
+              Flip Board
             </button>
           </div>
         </section>
 
-        {/* Right Section: Live Engine & Move Archive */}
-        <section className="w-full lg:w-[400px] xl:w-[450px] flex flex-col lg:h-full overflow-hidden gap-4">
+        {/* Right Column: Engine & Move Archive */}
+        <section className="w-full flex flex-col lg:h-[calc(100vh-120px)] overflow-hidden gap-4">
           <LiveEngine />
-          <div className="flex-1 overflow-hidden rounded-xl border border-white/10 bg-[#111]">
+          <div className="flex-1 overflow-hidden">
             <MoveList />
           </div>
         </section>

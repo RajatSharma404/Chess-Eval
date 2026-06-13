@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import { useGameStore } from '../store/useGameStore';
+import { EvalBar } from './EvalBar';
 
-export const ChessBoard: React.FC = () => {
+export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ boardOrientation }) => {
   const { analysisResult, currentMoveIndex, branchGame } = useGameStore();
-  const [boardOrientation, setBoardOrientation] = useState<'white' | 'black'>('white');
   
   const currentMove = currentMoveIndex >= 0 ? analysisResult?.moves[currentMoveIndex] : null;
   const fen = currentMove ? currentMove.fen_after : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -101,8 +101,12 @@ export const ChessBoard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 items-center w-full">
-      <div className="w-full max-w-[700px] aspect-square shadow-2xl rounded-xl overflow-hidden border-8 border-gray-800 bg-gray-800">
+    <div className="w-full flex aspect-square shadow-2xl rounded-xl overflow-hidden border-[6px] border-gray-800 bg-gray-800">
+      <EvalBar 
+        evalScore={currentMove ? currentMove.eval_after_cp : 0} 
+        isBlunder={currentMove ? currentMove.classification === 'blunder' : false}
+      />
+      <div className="flex-1 h-full bg-gray-800 relative z-10">
         <Chessboard 
           position={fen} 
           boardOrientation={boardOrientation}
@@ -112,12 +116,6 @@ export const ChessBoard: React.FC = () => {
           onPieceDrop={handlePieceDrop}
         />
       </div>
-      <button 
-        onClick={() => setBoardOrientation(o => o === 'white' ? 'black' : 'white')}
-        className="px-6 py-2 bg-gray-800 text-gray-300 font-bold rounded-lg hover:bg-gray-700 transition-all border border-gray-700 shadow-lg text-xs uppercase tracking-widest"
-      >
-        Flip Board
-      </button>
     </div>
   );
 };

@@ -69,10 +69,14 @@ export async function analyzeGameLocal(pgn: string, onProgress: (status: string)
     const evalBeforeRel = i % 2 === 0 ? evalBeforeCp : -evalBeforeCp;
     const evalAfterRel = i % 2 === 0 ? -evalAfterCp : evalAfterCp;
     
-    const cpLoss = Math.max(0, evalBeforeRel - evalAfterRel);
-    const wpLoss = Math.max(0, winProb(evalBeforeRel) - winProb(evalAfterRel));
+    let cpLoss = Math.max(0, evalBeforeRel - evalAfterRel);
+    let wpLoss = Math.max(0, winProb(evalBeforeRel) - winProb(evalAfterRel));
     
     const isBest = bestMoveUci === move.from + move.to || bestMoveUci === move.from + move.to + (move.promotion || '');
+    if (isBest) {
+      cpLoss = 0;
+      wpLoss = 0;
+    }
     const classification = classifyMove(cpLoss, isBest, 'captured' in move);
     
     movesAnalysis.push({

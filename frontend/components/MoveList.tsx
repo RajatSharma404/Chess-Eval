@@ -62,8 +62,69 @@ export const MoveList: React.FC = () => {
     }
   };
 
+  const renderSparkline = () => {
+    if (!moves || moves.length === 0) return null;
+    const width = 300; 
+    const height = 40; 
+    const points = moves.map((m, i) => {
+      const x = (i / (moves.length - 1 || 1)) * width;
+      const evalCp = Math.max(-800, Math.min(800, m.eval_after_cp || 0));
+      const y = 20 - (evalCp / 800) * 20;
+      return `${x},${y}`;
+    }).join(' ');
+
+    const currentX = currentMoveIndex >= 0 && currentMoveIndex < moves.length ? (currentMoveIndex / (moves.length - 1 || 1)) * width : 0;
+    const currentY = currentMoveIndex >= 0 && currentMoveIndex < moves.length ? 20 - (Math.max(-800, Math.min(800, moves[currentMoveIndex].eval_after_cp || 0)) / 800) * 20 : 20;
+
+    return (
+      <div className="w-full h-10 mb-6 px-4 group cursor-pointer" title="Game Evaluation Swing">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+          {/* Neutral line */}
+          <line x1="0" y1="20" x2={width} y2="20" stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4 4" />
+          
+          <polyline
+            points={points}
+            fill="none"
+            stroke="#0ea5e9"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="drop-shadow-[0_0_8px_rgba(14,165,233,0.6)]"
+          />
+          {/* Current move indicator */}
+          {currentMoveIndex >= 0 && currentMoveIndex < moves.length && (
+             <circle 
+               cx={currentX} 
+               cy={currentY} 
+               r="4" 
+               fill="#fff" 
+               stroke="#0ea5e9"
+               strokeWidth="2"
+               className="drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] transition-all duration-300"
+             />
+          )}
+        </svg>
+      </div>
+    );
+  };
+
   return (
-    <div ref={scrollRef} className="h-full overflow-y-auto p-4 scrollbar-hide">
+    <div ref={scrollRef} className="h-full flex flex-col bg-gray-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+      
+      <div className="p-4 border-b border-white/10 bg-black/20">
+        <div className="flex flex-wrap gap-2 justify-center mb-4">
+          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-cyan-500 rounded text-[8px] font-black flex items-center justify-center text-white">!!</span><span className="text-[10px] font-bold text-gray-400 uppercase">Brilliant</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-emerald-500 rounded text-[8px] font-black flex items-center justify-center text-white">★</span><span className="text-[10px] font-bold text-gray-400 uppercase">Best</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-blue-500 rounded text-[8px] font-black flex items-center justify-center text-white">!</span><span className="text-[10px] font-bold text-gray-400 uppercase">Excellent</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-green-500 rounded text-[8px] font-black flex items-center justify-center text-white">✓</span><span className="text-[10px] font-bold text-gray-400 uppercase">Good</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-yellow-500 rounded text-[8px] font-black flex items-center justify-center text-yellow-900">?!</span><span className="text-[10px] font-bold text-gray-400 uppercase">Inaccuracy</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-orange-500 rounded text-[8px] font-black flex items-center justify-center text-white">?</span><span className="text-[10px] font-bold text-gray-400 uppercase">Mistake</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-red-600 rounded text-[8px] font-black flex items-center justify-center text-white">??</span><span className="text-[10px] font-bold text-gray-400 uppercase">Blunder</span></div>
+        </div>
+        {renderSparkline()}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
       <table className="w-full text-sm text-gray-300">
         <thead className="sticky top-0 bg-[#111] z-10 shadow-[0_4px_10px_#111]">
           <tr className="text-left text-gray-500 uppercase text-[10px] font-black tracking-widest">
@@ -79,8 +140,8 @@ export const MoveList: React.FC = () => {
               <td 
                 onClick={() => setCurrentMoveIndex(idx * 2)}
                 className={clsx(
-                  "py-3 px-4 cursor-pointer hover:bg-white/5 rounded-lg transition-all",
-                  currentMoveIndex === idx * 2 && "bg-emerald-600/20 text-emerald-400 active-move ring-1 ring-emerald-500/50"
+                  "py-2.5 px-4 cursor-pointer hover:bg-white/5 rounded-lg transition-all",
+                  currentMoveIndex === idx * 2 && "bg-cyan-900/30 text-cyan-400 active-move ring-1 ring-cyan-500/50 shadow-[inset_0_0_10px_rgba(6,182,212,0.2)]"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -100,8 +161,8 @@ export const MoveList: React.FC = () => {
               <td 
                 onClick={() => pair.black && setCurrentMoveIndex(idx * 2 + 1)}
                 className={clsx(
-                  "py-3 px-4 cursor-pointer hover:bg-white/5 rounded-lg transition-all",
-                  pair.black && currentMoveIndex === idx * 2 + 1 && "bg-emerald-600/20 text-emerald-400 active-move ring-1 ring-emerald-500/50",
+                  "py-2.5 px-4 cursor-pointer hover:bg-white/5 rounded-lg transition-all",
+                  pair.black && currentMoveIndex === idx * 2 + 1 && "bg-cyan-900/30 text-cyan-400 active-move ring-1 ring-cyan-500/50 shadow-[inset_0_0_10px_rgba(6,182,212,0.2)]",
                   !pair.black && "cursor-default"
                 )}
               >
@@ -127,16 +188,17 @@ export const MoveList: React.FC = () => {
       </table>
       
       {originalAnalysisResult && analysisResult !== originalAnalysisResult && (
-        <div className="sticky bottom-0 p-4 mt-4 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent flex justify-center">
+        <div className="sticky bottom-0 p-4 mt-4 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent flex justify-center z-20">
           <button 
             onClick={restoreMainline}
-            className="w-full max-w-xs bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 font-bold py-2.5 px-4 rounded-xl transition-all shadow-lg text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
+            className="w-full max-w-xs bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-400 border border-cyan-500/30 font-bold py-2.5 px-4 rounded-xl transition-all shadow-lg text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             Restore Mainline Game
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 };
