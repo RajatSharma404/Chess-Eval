@@ -7,8 +7,10 @@ import { EvalBar } from './EvalBar';
 export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ boardOrientation }) => {
   const { analysisResult, currentMoveIndex, branchGame } = useGameStore();
   
-  const currentMove = currentMoveIndex >= 0 ? analysisResult?.moves[currentMoveIndex] : null;
-  const fen = currentMove ? currentMove.fen_after : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const currentMove = currentMoveIndex >= 0 && analysisResult && currentMoveIndex < analysisResult.moves.length 
+    ? analysisResult.moves[currentMoveIndex] 
+    : null;
+  const fen = currentMove?.fen_after ? currentMove.fen_after : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => {

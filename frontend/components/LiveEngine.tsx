@@ -32,8 +32,12 @@ export function LiveEngine() {
       return;
     }
 
-    const currentFen = currentMoveIndex >= 0 
-      ? analysisResult.moves[currentMoveIndex].fen_after 
+    const currentMove = currentMoveIndex >= 0 && currentMoveIndex < analysisResult.moves.length 
+      ? analysisResult.moves[currentMoveIndex] 
+      : null;
+      
+    const currentFen = currentMove?.fen_after 
+      ? currentMove.fen_after 
       : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
     // Figure out whose turn it is to format CP correctly

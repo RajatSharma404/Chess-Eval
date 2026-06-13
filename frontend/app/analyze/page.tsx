@@ -6,7 +6,8 @@ import { ChessBoard } from '../../components/ChessBoard';
 import { EvalBar } from '../../components/EvalBar';
 import { MoveList } from '../../components/MoveList';
 import { LiveEngine } from '../../components/LiveEngine';
-import { ChevronLeft, ChevronRight, Home, LayoutDashboard } from 'lucide-react';
+import { CoachChat } from '../../components/CoachChat';
+import { ChevronLeft, ChevronRight, Home, LayoutDashboard, X } from 'lucide-react';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
@@ -20,13 +21,29 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 export default function AnalyzePage() {
   const { analysisResult, currentMoveIndex, setCurrentMoveIndex, reset } = useGameStore();
   const [boardOrientation, setBoardOrientation] = React.useState<'white' | 'black'>('white');
+  const [activeTab, setActiveTab] = React.useState<'analysis' | 'coach'>('analysis');
+  const [brilliantIndex, setBrilliantIndex] = React.useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     if (!analysisResult) {
       router.push('/');
+    } else {
+      const idx = analysisResult.moves.findIndex(m => m.classification === 'brilliant');
+      if (idx !== -1) {
+        setBrilliantIndex(idx);
+      } else {
+        setBrilliantIndex(null);
+      }
     }
   }, [analysisResult, router]);
+
+  const handleGoToBrilliant = () => {
+    if (brilliantIndex !== null) {
+      setCurrentMoveIndex(brilliantIndex);
+      setBrilliantIndex(null); // dismiss toast after clicking
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -224,13 +241,46 @@ export default function AnalyzePage() {
         </section>
 
         {/* Right Column: Engine & Move Archive */}
-        <section className="w-full flex flex-col lg:h-[calc(100vh-120px)] overflow-hidden gap-4">
-          <LiveEngine />
-          <div className="flex-1 overflow-hidden">
-            <MoveList />
+        <section className="w-full flex flex-col lg:h-[calc(100vh-120px)] overflow-hidden gap-4 bg-gray-900/20 rounded-2xl border border-white/5 p-2">
+          {/* Tabs */}
+          <div className="flex bg-black/40 rounded-xl p-1 mb-2 shadow-inner shrink-0">
+             <button onClick={() => setActiveTab('analysis')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'analysis' ? 'bg-cyan-500 text-black shadow-md' : 'text-gray-500 hover:text-white'}`}>Analysis & Engine</button>
+             <button onClick={() => setActiveTab('coach')} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'coach' ? 'bg-emerald-500 text-black shadow-md' : 'text-gray-500 hover:text-white'}`}>Supercoach Q&A</button>
           </div>
+          
+          {activeTab === 'analysis' ? (
+            <>
+              <LiveEngine />
+              <div className="flex-1 overflow-hidden">
+                <MoveList />
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 overflow-hidden">
+               <CoachChat />
+            </div>
+          )}
         </section>
       </main>
+
+      {/* Brilliant Move Toast */}
+      {brilliantIndex !== null && brilliantIndex !== currentMoveIndex && (
+        <div className="fixed bottom-6 right-6 bg-cyan-900/90 border border-cyan-400/50 p-4 rounded-2xl shadow-[0_0_30px_rgba(34,211,238,0.3)] z-50 flex items-center gap-4 animate-in slide-in-from-bottom-10 backdrop-blur-md">
+          <div className="w-10 h-10 bg-cyan-400 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.8)] text-black text-xl font-black">
+            !!
+          </div>
+          <div>
+            <h3 className="text-white font-bold text-sm tracking-wide">Brilliant Move Found!</h3>
+            <p className="text-cyan-200 text-xs mt-0.5">You played a masterpiece on move {Math.floor(brilliantIndex / 2) + 1}.</p>
+          </div>
+          <button onClick={handleGoToBrilliant} className="ml-2 px-4 py-2 bg-cyan-400 hover:bg-cyan-300 text-black font-bold text-xs rounded-xl transition-colors">
+            Show Me
+          </button>
+          <button onClick={() => setBrilliantIndex(null)} className="absolute top-2 right-2 text-cyan-200/50 hover:text-cyan-200">
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </div>
     </ErrorBoundary>
   );

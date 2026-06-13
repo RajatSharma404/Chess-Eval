@@ -16,11 +16,53 @@ function HomeContent() {
   const [username, setUsername] = useState('');
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const [streakDays, setStreakDays] = useState<number[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('mastermind_streak_days');
+      if (stored) {
+        // Simple logic to reset streak if it's a new week (for production this would be more robust)
+        const lastDate = localStorage.getItem('mastermind_last_analysis_date');
+        if (lastDate) {
+           const daysDiff = (new Date().getTime() - new Date(lastDate).getTime()) / (1000 * 3600 * 24);
+           if (daysDiff > 7 || new Date().getDay() === 1 && daysDiff > 1) {
+              localStorage.removeItem('mastermind_streak_days');
+              return;
+           }
+        }
+        setStreakDays(JSON.parse(stored));
+      }
+    } catch(e) {}
+  }, []);
+
+  const updateStreak = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dayIndex = new Date().getDay(); 
+    const adjustedDay = dayIndex === 0 ? 6 : dayIndex - 1; // 0=Mon, 6=Sun
+    
+    const stored = localStorage.getItem('mastermind_last_analysis_date');
+    if (stored !== todayStr) {
+      localStorage.setItem('mastermind_last_analysis_date', todayStr);
+      let parsed = [];
+      try {
+        const existing = localStorage.getItem('mastermind_streak_days');
+        if (existing) parsed = JSON.parse(existing);
+      } catch(e) {}
+      if (!parsed.includes(adjustedDay)) {
+        const newStreak = [...parsed, adjustedDay];
+        setStreakDays(newStreak);
+        localStorage.setItem('mastermind_streak_days', JSON.stringify(newStreak));
+      }
+    }
+  };
+
   const handleAnalyzeGame = async (pgn: string) => {
     setGameUrl(pgn);
     setLoading(true);
     setError(null);
     setProgressStatus("Initializing...");
+    updateStreak();
     try {
       const result = await analyzeGame(pgn, (status) => setProgressStatus(status));
       setAnalysisResult(result);
@@ -173,13 +215,46 @@ function HomeContent() {
         </form>
 
         {/* Quick Try Links */}
-        {(activeTab === 'chesscom' || activeTab === 'lichess') && (
-           <div className="flex items-center justify-center gap-4 mt-2 text-sm shrink-0">
-             <span className="text-gray-500">Quick Try:</span>
-             <button type="button" onClick={() => { setUsername('MagnusCarlsen'); setActiveTab('chesscom'); }} className="text-emerald-400 hover:text-emerald-300 font-medium underline underline-offset-4 decoration-emerald-900">MagnusCarlsen</button>
-             <button type="button" onClick={() => { setUsername('GothamChess'); setActiveTab('chesscom'); }} className="text-emerald-400 hover:text-emerald-300 font-medium underline underline-offset-4 decoration-emerald-900">GothamChess</button>
+        <div className="flex flex-col items-center justify-center gap-2 mt-4 text-sm shrink-0">
+          {(activeTab === 'chesscom' || activeTab === 'lichess') ? (
+             <div className="flex items-center gap-4">
+               <span className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Profiles:</span>
+               <button type="button" onClick={() => { setUsername('MagnusCarlsen'); setActiveTab('chesscom'); }} className="text-cyan-400 hover:text-cyan-300 font-medium underline underline-offset-4 decoration-cyan-900">MagnusCarlsen</button>
+               <button type="button" onClick={() => { setUsername('GothamChess'); setActiveTab('chesscom'); }} className="text-cyan-400 hover:text-cyan-300 font-medium underline underline-offset-4 decoration-cyan-900">GothamChess</button>
+             </div>
+          ) : (
+             <div className="flex items-center gap-4">
+               <span className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Famous Game:</span>
+               <button type="button" onClick={() => { 
+                 const famousPgn = '[Event "FIDE World Cup 2023"]\n[Site "Baku AZE"]\n[Date "2023.08.19"]\n[Round "7.1"]\n[White "Carlsen, M."]\n[Black "Praggnanandhaa, R."]\n[Result "1/2-1/2"]\n[WhiteElo "2835"]\n[BlackElo "2690"]\n\n1. c4 e5 2. Nc3 Nf6 3. Nf3 Nc6 4. d4 exd4 5. Nxd4 Bb4 6. Bg5 h6 7. Bh4 Bxc3+ 8. bxc3 Ne5 9. e3 d6 10. Be2 Ng6 11. Bg3 Ne4 12. Qc2 Qe7 13. Bd3 Nxg3 14. hxg3 Ne5 15. Rb1 O-O 16. O-O b6 17. Be4 Ba6 18. Bxa8 Rxa8 19. Qa4 Bxc4 20. Rfd1 a5 21. a3 Re8 22. Rb2 g6 23. Rbd2 h5 24. Nc6 Qd7 25. Rd4 b5 26. Nxe5 Rxe5 27. Qxa5 Bb3 28. R1d2 Qc6 29. Qb4 Be6 30. a4 Rc5 31. Rb2 bxa4 32. Qxa4 Qxa4 33. Rxa4 Rxc3 34. Rb7 c5 35. Rb6 d5 36. Ra8+ Kg7 37. Ra7 Kf6 38. Rc7 Rc1+ 39. Kh2 c4 40. Rbb7 Rc2 41. f3 Re2 42. e4 d4 43. Rb4 Rd2 44. g4 hxg4 45. Kg3 gxf3 46. gxf3 g5 47. Rbxc4 Bxc4 48. Rxc4 d3 49. Rd4 Ke6 50. Rd5 f6 51. Kh3 Rd1 52. Kg2 d2 53. Kf2 Rh1 54. Rxd2 Rh2+ 55. Ke3 Rxd2 56. Kxd2 Kd6 1/2-1/2';
+                 setGameUrl(famousPgn); 
+                 setActiveTab('pgn'); 
+               }} className="text-cyan-400 hover:text-cyan-300 font-medium underline underline-offset-4 decoration-cyan-900">
+                 Carlsen vs Pragg (World Cup)
+               </button>
+             </div>
+          )}
+        </div>
+
+        {/* Weekly Streak Tracker */}
+        <div className="mt-8 flex flex-col items-center bg-gray-900/40 backdrop-blur-md border border-white/5 p-4 rounded-3xl inline-block mx-auto">
+           <div className="flex items-center gap-2 mb-3">
+             <div className="text-[10px] uppercase font-black text-gray-500 tracking-[0.2em]">Analysis Streak</div>
+             <div className="bg-yellow-500/20 text-yellow-500 text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1">
+               🔥 {streakDays.length}
+             </div>
            </div>
-        )}
+           <div className="flex gap-2 sm:gap-3">
+             {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
+               const isActive = streakDays.includes(idx);
+               return (
+                 <div key={idx} className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-xs sm:text-sm font-black transition-all duration-500 ${isActive ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.4)] scale-110' : 'bg-gray-800/50 text-gray-500 border border-white/5'}`}>
+                   {day}
+                 </div>
+               )
+             })}
+           </div>
+        </div>
       </div>
 
       {/* Footer */}
