@@ -7,6 +7,7 @@ import { EvalBar } from '../../components/EvalBar';
 import { MoveList } from '../../components/MoveList';
 import { LiveEngine } from '../../components/LiveEngine';
 import { CoachChat } from '../../components/CoachChat';
+import { BrilliantGem } from '../../components/BrilliantGem';
 import { ChevronLeft, ChevronRight, Home, LayoutDashboard, X } from 'lucide-react';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
@@ -265,15 +266,13 @@ export default function AnalyzePage() {
 
       {/* Brilliant Move Toast */}
       {brilliantIndex !== null && brilliantIndex !== currentMoveIndex && (
-        <div className="fixed bottom-6 right-6 bg-cyan-900/90 border border-cyan-400/50 p-4 rounded-2xl shadow-[0_0_30px_rgba(34,211,238,0.3)] z-50 flex items-center gap-4 animate-in slide-in-from-bottom-10 backdrop-blur-md">
-          <div className="w-10 h-10 bg-cyan-400 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.8)] text-black text-xl font-black">
-            !!
-          </div>
+        <div className="fixed bottom-6 right-6 bg-cyan-900/90 border border-cyan-400/50 p-4 pr-6 rounded-2xl shadow-[0_0_30px_rgba(34,211,238,0.3)] z-50 flex items-center gap-4 animate-in slide-in-from-bottom-10 backdrop-blur-md">
+          <BrilliantGem />
           <div>
             <h3 className="text-white font-bold text-sm tracking-wide">Brilliant Move Found!</h3>
             <p className="text-cyan-200 text-xs mt-0.5">You played a masterpiece on move {Math.floor(brilliantIndex / 2) + 1}.</p>
           </div>
-          <button onClick={handleGoToBrilliant} className="ml-2 px-4 py-2 bg-cyan-400 hover:bg-cyan-300 text-black font-bold text-xs rounded-xl transition-colors">
+          <button onClick={handleGoToBrilliant} className="ml-2 px-4 py-2 bg-cyan-400 hover:bg-cyan-300 text-black font-bold text-xs rounded-xl transition-colors shadow-lg">
             Show Me
           </button>
           <button onClick={() => setBrilliantIndex(null)} className="absolute top-2 right-2 text-cyan-200/50 hover:text-cyan-200">

@@ -3,8 +3,10 @@ import React, { useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGameStore } from '../store/useGameStore';
 import { analyzeGame } from '../lib/api';
-import { Search, Loader2, Sparkles, ArrowRight, User } from 'lucide-react';
+import { Search, Sparkles, User } from 'lucide-react';
 import axios from 'axios';
+import { HeroKnight } from '../components/HeroKnight';
+import { LoadingPiece } from '../components/LoadingPiece';
 import { formatDistanceToNow } from 'date-fns';
 
 function HomeContent() {
@@ -106,8 +108,8 @@ function HomeContent() {
       {isLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
           <div className="flex flex-col items-center gap-6">
-            <Loader2 className="w-16 h-16 text-emerald-500 animate-spin" />
-            <h2 className="text-2xl font-black text-white uppercase tracking-widest animate-pulse">Running Analysis...</h2>
+            <LoadingPiece />
+            <h2 className="text-2xl font-black text-white uppercase tracking-widest animate-pulse mt-4">Running Analysis...</h2>
             {progressStatus ? (
               <p className="text-emerald-400 font-mono text-lg font-bold bg-emerald-900/20 px-6 py-2 rounded-full border border-emerald-500/20">
                 {progressStatus}
@@ -129,7 +131,7 @@ function HomeContent() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400 mb-2 animate-bounce">
             <Sparkles size={12} /> Powered by Stockfish 17 & Gemini 2.0
           </div>
-          <img src="/logo.png" alt="MasterMind Logo" className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-[0_0_30px_rgba(16,185,129,0.5)]" />
+          <HeroKnight />
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter text-white leading-[0.9]">
             MASTER<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-400">MIND</span>
           </h1>
@@ -274,7 +276,7 @@ export default function Home() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <Loader2 className="w-16 h-16 text-emerald-500 animate-spin" />
+        <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
       </div>
     }>
       <HomeContent />

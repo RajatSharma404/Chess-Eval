@@ -6,6 +6,8 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { Loader2, Share2, RefreshCw, Download, Settings, ChevronRight, X } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { analyzeGame } from '../../lib/api';
+import { LoadingPiece } from '../../components/LoadingPiece';
+import { FallenKing } from '../../components/FallenKing';
 
 function HistoryContent() {
   const searchParams = useSearchParams();
@@ -269,8 +271,8 @@ function HistoryContent() {
       {engineLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
           <div className="flex flex-col items-center gap-6">
-            <Loader2 className="w-16 h-16 text-emerald-500 animate-spin" />
-            <h2 className="text-2xl font-black text-white uppercase tracking-widest animate-pulse">Running Analysis...</h2>
+            <LoadingPiece />
+            <h2 className="text-2xl font-black text-white uppercase tracking-widest animate-pulse mt-4">Running Analysis...</h2>
             {progressStatus ? (
               <p className="text-emerald-400 font-mono text-lg font-bold bg-emerald-900/20 px-6 py-2 rounded-full border border-emerald-500/20">
                 {progressStatus}
@@ -335,7 +337,15 @@ function HistoryContent() {
               <Loader2 className="w-10 h-10 animate-spin text-yellow-500" />
             </div>
           ) : error ? (
-            <div className="py-20 text-center text-red-400">{error}</div>
+            <div className="py-20 text-center text-red-400 font-medium">{error}</div>
+          ) : games.length === 0 ? (
+            <div className="py-20 flex flex-col items-center text-center">
+              <FallenKing />
+              <h3 className="text-xl font-bold text-white mt-8">No Games Found</h3>
+              <p className="text-gray-400 max-w-md mt-2">
+                We couldn't find any games for the selected period. Import more games or try a different time range.
+              </p>
+            </div>
           ) : (
             <div className="w-full">
               {/* Table Header */}

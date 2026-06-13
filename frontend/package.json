@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@types/three": "^0.184.1",
     "axios": "^1.17.0",
     "chess.js": "^1.0.0-beta.8",
     "clsx": "^2.1.1",
@@ -22,6 +25,7 @@
     "react-dom": "^19.0.0",
     "recharts": "^2.13.3",
     "tailwind-merge": "^2.5.4",
+    "three": "^0.184.0",
     "zustand": "^5.0.1"
   },
   "devDependencies": {
