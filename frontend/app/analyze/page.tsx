@@ -142,7 +142,7 @@ export default function AnalyzePage() {
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(600px,1fr)_400px] xl:grid-cols-[280px_minmax(500px,1fr)_400px] p-6 gap-6 overflow-y-auto max-w-[1800px] mx-auto w-full">
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(600px,1fr)_1fr] xl:grid-cols-[280px_minmax(500px,700px)_1fr] p-6 gap-6 overflow-y-auto max-w-[1800px] mx-auto w-full">
         {/* Left Column: Sidebar (Hidden on smaller screens) */}
         <section className="hidden xl:flex flex-col gap-4 h-full">
            <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl">
@@ -178,7 +178,7 @@ export default function AnalyzePage() {
         </section>
 
         {/* Center Column: Board & Controls */}
-        <section className="flex flex-col gap-4 w-full items-center justify-start max-w-[800px] mx-auto xl:max-w-none">
+        <section className="flex flex-col gap-4 w-full items-center justify-start max-w-[800px] mx-auto xl:max-w-none xl:mx-0 xl:items-start">
           <div className="w-full max-w-[750px] relative">
              <ChessBoard boardOrientation={boardOrientation} />
           </div>

@@ -33,7 +33,7 @@ export class StockfishEngine {
             const line = rawLine.replace('data: ', '').trim();
             
             if (line.startsWith('info depth')) {
-              const pvMatch = line.match(/pv\s+([a-h1-8]{4,5})/);
+              const pvMatch = line.match(/\bpv\s+([a-h1-8]{4,5})/);
               const cpMatch = line.match(/cp\s+(-?\d+)/);
               const mateMatch = line.match(/mate\s+(-?\d+)/);
               const multipvMatch = line.match(/multipv\s+(\d+)/);
@@ -87,7 +87,7 @@ export class StockfishEngine {
         const multipvMatch = line.match(/multipv\s+(\d+)/);
         const scoreCpMatch = line.match(/cp\s+(-?\d+)/);
         const scoreMateMatch = line.match(/mate\s+(-?\d+)/);
-        const pvMatch = line.match(/pv\s+(.+)/);
+        const pvMatch = line.match(/\bpv\s+(.+)/);
 
         if (depthMatch && multipvMatch && pvMatch) {
           const depth = parseInt(depthMatch[1], 10);
