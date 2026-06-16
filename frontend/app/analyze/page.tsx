@@ -144,8 +144,8 @@ export default function AnalyzePage() {
 
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(600px,1fr)_1fr] xl:grid-cols-[280px_minmax(500px,700px)_1fr] p-6 gap-6 overflow-y-auto max-w-[1800px] mx-auto w-full">
         {/* Left Column: Sidebar (Hidden on smaller screens) */}
-        <section className="hidden xl:flex flex-col gap-4 h-full">
-           <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl">
+        <section className="hidden xl:flex flex-col gap-4 h-full overflow-y-auto pr-2 custom-scrollbar">
+           <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl shrink-0">
               <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <LayoutDashboard size={14} /> Match Info
               </h2>
@@ -171,9 +171,13 @@ export default function AnalyzePage() {
               </div>
            </div>
            
-           <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl flex-1">
+           <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl shrink-0">
               <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Opening Setup</h2>
               <p className="text-sm font-bold text-cyan-50 leading-relaxed bg-cyan-900/20 p-3 rounded-xl border border-cyan-500/20">{analysisResult.opening}</p>
+           </div>
+
+           <div className="flex-1 overflow-hidden flex flex-col">
+              <LiveEngine />
            </div>
         </section>
 
@@ -250,12 +254,9 @@ export default function AnalyzePage() {
           </div>
           
           {activeTab === 'analysis' ? (
-            <>
-              <LiveEngine />
-              <div className="flex-1 overflow-hidden">
-                <MoveList />
-              </div>
-            </>
+            <div className="flex-1 overflow-hidden">
+              <MoveList />
+            </div>
           ) : (
             <div className="flex-1 overflow-hidden">
                <CoachChat />
