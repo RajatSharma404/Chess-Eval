@@ -25,6 +25,10 @@ export interface Suggestion {
 
 export interface AnalysisResult {
   opening: string;
+  white_player: string;
+  black_player: string;
+  white_elo: string;
+  black_elo: string;
   white_accuracy: number;
   black_accuracy: number;
   critical_move_index: number;

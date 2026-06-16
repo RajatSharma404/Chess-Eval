@@ -157,13 +157,6 @@ export function LiveEngine() {
 
   return (
     <div className="flex-none flex flex-col bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
-      {/* Tabs */}
-      <div className="flex items-center text-sm font-bold text-gray-500 border-b border-white/10 bg-black/20">
-        <button className="flex-1 py-4 hover:text-gray-300 transition-colors">Report</button>
-        <button className="flex-1 py-4 text-yellow-400 border-b-2 border-yellow-400">Analysis</button>
-        <button className="flex-1 py-4 hover:text-gray-300 transition-colors">Coach</button>
-        <button className="flex-1 py-4 hover:text-gray-300 transition-colors">Settings</button>
-      </div>
 
       <div className="p-4 flex-1 flex flex-col">
         {/* Engine Header */}
@@ -172,7 +165,7 @@ export function LiveEngine() {
             {/* Toggle */}
             <button 
               onClick={() => setEngineOn(!engineOn)}
-              className={`w-12 h-6 rounded-full flex items-center p-1 transition-colors shadow-inner ${engineOn ? 'bg-yellow-500' : 'bg-gray-600'}`}
+              className={`w-12 h-6 rounded-full flex items-center p-1 transition-colors shadow-inner ${engineOn ? 'bg-amber-500' : 'bg-gray-600'}`}
             >
               <div className={`w-4 h-4 bg-white rounded-full transition-transform shadow ${engineOn ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
@@ -182,43 +175,54 @@ export function LiveEngine() {
           </div>
           <div className="flex items-center gap-4 text-right">
             <div>
-              <div className="text-yellow-400 font-bold text-sm">Depth {depth}</div>
-              <div className="text-cyan-400 text-[10px] font-black tracking-wider uppercase">Stockfish 17 (AVX2)</div>
+              <div className="text-amber-400 font-bold text-sm">Depth {depth}</div>
+              <div className="text-emerald-400 text-[10px] font-black tracking-wider uppercase">Stockfish 17 (AVX2)</div>
             </div>
             <Settings className="text-gray-400 hover:text-white cursor-pointer transition-colors hover:rotate-90 duration-300" size={20} />
           </div>
         </div>
 
         {/* Follow Best Line Button */}
-        <button className="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-400 hover:to-yellow-300 text-black font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all mb-6 shadow-[0_0_15px_rgba(234,179,8,0.3)] hover:shadow-[0_0_25px_rgba(234,179,8,0.5)] active:scale-[0.98]">
+        <button className="w-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all mb-6 shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:shadow-[0_0_25px_rgba(245,158,11,0.5)] active:scale-[0.98]">
           <FastForward size={18} /> Follow Best Line
         </button>
 
         {/* Engine Lines */}
         <div className="space-y-2">
-          {engineLines.map((line, idx) => (
+          {engineLines.length > 0 ? engineLines.map((line, idx) => (
             <div 
               key={idx} 
               onClick={() => handleLineClick(line)}
-              className="flex items-start gap-3 text-sm group cursor-pointer hover:bg-white/5 p-2 -mx-2 rounded-lg transition-all border border-transparent hover:border-white/10"
+              className="flex items-center gap-3 text-sm group cursor-pointer hover:bg-white/5 p-2 -mx-2 rounded-lg transition-all border border-transparent hover:border-white/10"
             >
-              <div className={`w-6 h-6 flex items-center justify-center font-black text-lg mt-0.5 drop-shadow-md ${idx === 0 ? 'text-yellow-400' : 'text-cyan-400/80'}`}>
+              <div className={`w-6 h-6 flex items-center justify-center font-black text-lg drop-shadow-md ${idx === 0 ? 'text-amber-400' : 'text-emerald-400/80'}`}>
                 {getPieceIcon(line.firstMovePiece)}
               </div>
-              <div className="font-black text-white w-8 mt-1">
+              <div className="font-black text-white w-8">
                 {line.firstMoveSan}
               </div>
-              <div className={`px-2 py-0.5 mt-0.5 rounded text-[10px] font-black shadow-sm ${line.displayScore > 0 ? 'bg-white text-black' : 'bg-gray-800 text-white border border-gray-600'}`}>
+              <div className="px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm bg-gray-800 text-white border border-gray-600 min-w-[42px] text-center">
                 {formatScore(line.displayScore, line.isMate)}
               </div>
-              <div className="text-gray-400 font-medium flex-1 group-hover:text-cyan-50 transition-colors text-xs leading-relaxed line-clamp-1 group-hover:line-clamp-none">
+              <div 
+                className="text-gray-400 font-medium flex-1 truncate text-xs transition-colors group-hover:text-white"
+                title={line.sanSequence.split(' ').slice(1).join(' ')}
+              >
                 {line.sanSequence.split(' ').slice(1).join(' ')}
               </div>
             </div>
-          ))}
-          {engineLines.length === 0 && engineOn && (
-            <div className="text-center text-cyan-400 py-6 font-black tracking-widest text-xs uppercase animate-pulse">Calculating lines...</div>
-          )}
+          )) : engineOn ? (
+            <div className="animate-pulse space-y-3 py-2">
+               {[1, 2, 3].map(i => (
+                 <div key={i} className="flex items-center gap-3 p-2 -mx-2">
+                   <div className="w-6 h-6 bg-gray-700 rounded-full" />
+                   <div className="w-8 h-4 bg-gray-700 rounded" />
+                   <div className="w-[42px] h-5 bg-gray-700 rounded-full" />
+                   <div className="flex-1 h-4 bg-gray-700 rounded" />
+                 </div>
+               ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

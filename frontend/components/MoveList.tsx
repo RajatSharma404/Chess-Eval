@@ -75,33 +75,47 @@ export const MoveList: React.FC = () => {
 
     const currentX = currentMoveIndex >= 0 && currentMoveIndex < moves.length ? (currentMoveIndex / (moves.length - 1 || 1)) * width : 0;
     const currentY = currentMoveIndex >= 0 && currentMoveIndex < moves.length ? 20 - (Math.max(-800, Math.min(800, moves[currentMoveIndex].eval_after_cp || 0)) / 800) * 20 : 20;
+    const areaPoints = `0,20 ${points} ${width},20`;
 
     return (
-      <div className="w-full h-10 mb-6 px-4 group cursor-pointer" title="Game Evaluation Swing">
+      <div className="w-full h-10 mb-6 px-4 group relative cursor-crosshair" title="Game Evaluation Swing">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
-          {/* Neutral line */}
-          <line x1="0" y1="20" x2={width} y2="20" stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4 4" />
+          <defs>
+            <clipPath id="above">
+              <rect x="0" y="0" width={width} height="20" />
+            </clipPath>
+            <clipPath id="below">
+              <rect x="0" y="20" width={width} height="20" />
+            </clipPath>
+          </defs>
+          
+          <polygon points={areaPoints} fill="rgba(240,240,240,0.9)" clipPath="url(#above)" />
+          <polygon points={areaPoints} fill="rgba(30,41,59,0.9)" clipPath="url(#below)" />
+          
+          <line x1="0" y1="20" x2={width} y2="20" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="4 4" />
           
           <polyline
             points={points}
             fill="none"
             stroke="#0ea5e9"
-            strokeWidth="2.5"
+            strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="drop-shadow-[0_0_8px_rgba(14,165,233,0.6)]"
           />
-          {/* Current move indicator */}
+          
           {currentMoveIndex >= 0 && currentMoveIndex < moves.length && (
-             <circle 
-               cx={currentX} 
-               cy={currentY} 
-               r="4" 
-               fill="#fff" 
-               stroke="#0ea5e9"
-               strokeWidth="2"
-               className="drop-shadow-[0_0_5px_rgba(255,255,255,0.8)] transition-all duration-300"
-             />
+             <g className="transition-all duration-300">
+               <line x1={currentX} y1="0" x2={currentX} y2={height} stroke="rgba(251,191,36,0.6)" strokeWidth="1" />
+               <circle 
+                 cx={currentX} 
+                 cy={currentY} 
+                 r="3.5" 
+                 fill="#fbbf24" 
+                 stroke="#fff"
+                 strokeWidth="1.5"
+                 className="drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]"
+               />
+             </g>
           )}
         </svg>
       </div>
@@ -112,80 +126,91 @@ export const MoveList: React.FC = () => {
     <div ref={scrollRef} className="h-full flex flex-col bg-gray-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
       
       <div className="p-4 border-b border-white/10 bg-black/20">
-        <div className="flex flex-wrap gap-2 justify-center mb-4">
-          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-cyan-500 rounded text-[8px] font-black flex items-center justify-center text-white">!!</span><span className="text-[10px] font-bold text-gray-400 uppercase">Brilliant</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-emerald-500 rounded text-[8px] font-black flex items-center justify-center text-white">★</span><span className="text-[10px] font-bold text-gray-400 uppercase">Best</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-blue-500 rounded text-[8px] font-black flex items-center justify-center text-white">!</span><span className="text-[10px] font-bold text-gray-400 uppercase">Excellent</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-green-500 rounded text-[8px] font-black flex items-center justify-center text-white">✓</span><span className="text-[10px] font-bold text-gray-400 uppercase">Good</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-yellow-500 rounded text-[8px] font-black flex items-center justify-center text-yellow-900">?!</span><span className="text-[10px] font-bold text-gray-400 uppercase">Inaccuracy</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-orange-500 rounded text-[8px] font-black flex items-center justify-center text-white">?</span><span className="text-[10px] font-bold text-gray-400 uppercase">Mistake</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-4 h-4 bg-red-600 rounded text-[8px] font-black flex items-center justify-center text-white">??</span><span className="text-[10px] font-bold text-gray-400 uppercase">Blunder</span></div>
+        <div className="flex flex-wrap gap-3 justify-center mb-4">
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-cyan-500 rounded"></span><span className="text-[10px] font-bold text-gray-300 uppercase">Brilliant</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-emerald-500 rounded"></span><span className="text-[10px] font-bold text-gray-300 uppercase">Best</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-blue-500 rounded"></span><span className="text-[10px] font-bold text-gray-300 uppercase">Excellent</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-green-500 rounded"></span><span className="text-[10px] font-bold text-gray-300 uppercase">Good</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-yellow-500 rounded"></span><span className="text-[10px] font-bold text-gray-300 uppercase">Inaccuracy</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-orange-500 rounded"></span><span className="text-[10px] font-bold text-gray-300 uppercase">Mistake</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-red-600 rounded"></span><span className="text-[10px] font-bold text-gray-300 uppercase">Blunder</span></div>
         </div>
         {renderSparkline()}
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
-      <table className="w-full text-sm text-gray-300">
-        <thead className="sticky top-0 bg-[#111] z-10 shadow-[0_4px_10px_#111]">
-          <tr className="text-left text-gray-500 uppercase text-[10px] font-black tracking-widest">
-            <th className="py-2 px-4 w-12">#</th>
-            <th className="py-2 px-4">White</th>
-            <th className="py-2 px-4">Black</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-800/50">
-          {pairs.map((pair, idx) => (
-            <tr key={idx} className="group">
-              <td className="py-3 px-4 text-gray-600 font-mono text-xs">{pair.num}.</td>
-              <td 
-                onClick={() => setCurrentMoveIndex(idx * 2)}
-                className={clsx(
-                  "py-2.5 px-4 cursor-pointer hover:bg-white/5 rounded-lg transition-all",
-                  currentMoveIndex === idx * 2 && "bg-cyan-900/30 text-cyan-400 active-move ring-1 ring-cyan-500/50 shadow-[inset_0_0_10px_rgba(6,182,212,0.2)]"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  {getClassificationSymbol(pair.white.classification) ? (
-                    <span className={clsx("w-5 h-5 flex items-center justify-center flex-shrink-0 rounded shadow-[0_0_8px_rgba(0,0,0,0.5)] font-black text-[10px]", getDotColor(pair.white.classification))}>
-                      {getClassificationSymbol(pair.white.classification)}
-                    </span>
-                  ) : (
-                    <span className="w-5 h-5 flex-shrink-0" />
-                  )}
-                  <span className="font-bold flex-1">{pair.white.move_san}</span>
-                  <span className="text-[10px] text-gray-500 font-mono w-8 text-right">
-                    {(pair.white.eval_after_cp > 0 ? '+' : '')}{(pair.white.eval_after_cp / 100).toFixed(1)}
-                  </span>
-                </div>
-              </td>
-              <td 
-                onClick={() => pair.black && setCurrentMoveIndex(idx * 2 + 1)}
-                className={clsx(
-                  "py-2.5 px-4 cursor-pointer hover:bg-white/5 rounded-lg transition-all",
-                  pair.black && currentMoveIndex === idx * 2 + 1 && "bg-cyan-900/30 text-cyan-400 active-move ring-1 ring-cyan-500/50 shadow-[inset_0_0_10px_rgba(6,182,212,0.2)]",
-                  !pair.black && "cursor-default"
-                )}
-              >
-                {pair.black && (
-                  <div className="flex items-center gap-3">
-                    {getClassificationSymbol(pair.black.classification) ? (
-                      <span className={clsx("w-5 h-5 flex items-center justify-center flex-shrink-0 rounded shadow-[0_0_8px_rgba(0,0,0,0.5)] font-black text-[10px]", getDotColor(pair.black.classification))}>
-                        {getClassificationSymbol(pair.black.classification)}
+        <div className="w-full text-sm text-gray-300 flex flex-col">
+          <div className="sticky top-0 bg-[#111] z-10 shadow-[0_4px_10px_#111] flex px-2 py-2 text-gray-500 uppercase text-[10px] font-black tracking-widest border-b border-gray-800/50">
+            <div className="w-[32px]">#</div>
+            <div className="flex-1">White</div>
+            <div className="flex-1">Black</div>
+          </div>
+          <div className="flex flex-col divide-y divide-gray-800/50 pb-4">
+            {pairs.map((pair, idx) => {
+              const formatEval = (cp: number) => {
+                if (Math.abs(cp) > 9000) {
+                  const mate = 10000 - Math.abs(cp);
+                  return cp > 0 ? `M${mate}` : `-M${mate}`;
+                }
+                return (cp > 0 ? '+' : '') + (cp / 100).toFixed(1);
+              };
+
+              return (
+                <div key={idx} className="flex px-2 group">
+                  <div className="w-[32px] py-1.5 text-gray-600 font-mono text-xs flex items-center">{pair.num}.</div>
+                  <div 
+                    onClick={() => setCurrentMoveIndex(idx * 2)}
+                    className={clsx(
+                      "flex-1 grid grid-cols-[24px_1fr_56px] items-center gap-1 py-1.5 px-2 cursor-pointer transition-all border-l-2",
+                      currentMoveIndex === idx * 2 
+                        ? "bg-zinc-800 border-amber-400 active-move shadow-[inset_0_0_10px_rgba(251,191,36,0.1)]" 
+                        : "border-transparent hover:bg-zinc-800/50"
+                    )}
+                  >
+                    {getClassificationSymbol(pair.white.classification) ? (
+                      <span className={clsx("w-[18px] h-[18px] flex items-center justify-center rounded shadow-sm font-black text-[10px]", getDotColor(pair.white.classification))}>
+                        {getClassificationSymbol(pair.white.classification)}
                       </span>
                     ) : (
-                      <span className="w-5 h-5 flex-shrink-0" />
+                      <span className="w-[18px] h-[18px]" />
                     )}
-                    <span className="font-bold flex-1">{pair.black.move_san}</span>
-                    <span className="text-[10px] text-gray-500 font-mono w-8 text-right">
-                        {(pair.black.eval_after_cp > 0 ? '+' : '')}{(pair.black.eval_after_cp / 100).toFixed(1)}
+                    <span className="font-bold truncate text-gray-200">{pair.white.move_san}</span>
+                    <span className="text-[10px] text-gray-500 font-mono text-right truncate">
+                      {formatEval(pair.white.eval_after_cp)}
                     </span>
                   </div>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  
+                  <div 
+                    onClick={() => pair.black && setCurrentMoveIndex(idx * 2 + 1)}
+                    className={clsx(
+                      "flex-1 grid grid-cols-[24px_1fr_56px] items-center gap-1 py-1.5 px-2 transition-all border-l-2",
+                      pair.black ? "cursor-pointer" : "cursor-default",
+                      pair.black && currentMoveIndex === idx * 2 + 1 
+                        ? "bg-zinc-800 border-amber-400 active-move shadow-[inset_0_0_10px_rgba(251,191,36,0.1)]" 
+                        : "border-transparent hover:bg-zinc-800/50"
+                    )}
+                  >
+                    {pair.black && (
+                      <>
+                        {getClassificationSymbol(pair.black.classification) ? (
+                          <span className={clsx("w-[18px] h-[18px] flex items-center justify-center rounded shadow-sm font-black text-[10px]", getDotColor(pair.black.classification))}>
+                            {getClassificationSymbol(pair.black.classification)}
+                          </span>
+                        ) : (
+                          <span className="w-[18px] h-[18px]" />
+                        )}
+                        <span className="font-bold truncate text-gray-200">{pair.black.move_san}</span>
+                        <span className="text-[10px] text-gray-500 font-mono text-right truncate">
+                          {formatEval(pair.black.eval_after_cp)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       
       {originalAnalysisResult && analysisResult !== originalAnalysisResult && (
         <div className="sticky bottom-0 p-4 mt-4 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent flex justify-center z-20">

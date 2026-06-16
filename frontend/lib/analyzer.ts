@@ -27,6 +27,14 @@ export async function analyzeGameLocal(pgn: string, onProgress: (status: string)
   const chess = new Chess();
   chess.loadPgn(pgn);
   
+  const headers = chess.header();
+  const whitePlayer = headers['White'] || 'White Player';
+  const blackPlayer = headers['Black'] || 'Black Player';
+  const whiteElo = headers['WhiteElo'] || '1500';
+  const blackElo = headers['BlackElo'] || '1500';
+  // Use Opening name if available, otherwise ECO, otherwise default.
+  const openingName = headers['Opening'] || headers['ECO'] || "Custom Opening";
+  
   const history = chess.history({ verbose: true });
   const totalMoves = history.length;
   
@@ -135,7 +143,11 @@ export async function analyzeGameLocal(pgn: string, onProgress: (status: string)
   }
 
   return {
-    opening: "Custom Opening",
+    opening: openingName,
+    white_player: whitePlayer,
+    black_player: blackPlayer,
+    white_elo: whiteElo,
+    black_elo: blackElo,
     white_accuracy: whiteAcc,
     black_accuracy: blackAcc,
     critical_move_index: 0,

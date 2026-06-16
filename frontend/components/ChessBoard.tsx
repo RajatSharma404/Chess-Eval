@@ -103,12 +103,12 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ 
   };
 
   return (
-    <div className="w-full flex aspect-square shadow-2xl rounded-xl overflow-hidden border-[6px] border-gray-800 bg-gray-800">
+    <div className="w-full flex shadow-2xl rounded-xl overflow-hidden border-[6px] border-gray-800 bg-gray-800">
       <EvalBar 
         evalScore={currentMove ? currentMove.eval_after_cp : 0} 
         isBlunder={currentMove ? currentMove.classification === 'blunder' : false}
       />
-      <div className="flex-1 h-full bg-gray-800 relative z-10">
+      <div className="flex-1 aspect-square bg-gray-800 relative z-10">
         <Chessboard 
           position={fen} 
           boardOrientation={boardOrientation}
