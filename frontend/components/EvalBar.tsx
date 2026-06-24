@@ -10,6 +10,7 @@ export const EvalBar: React.FC<EvalBarProps> = ({ evalScore, isBlunder }) => {
   const score = Math.max(-8, Math.min(8, evalScore / 100));
   
   // Calculate percentage: -8 is 0%, +8 is 100%, 0 is 50%
+  // 50% means equal. 100% means white is completely winning.
   const whitePercent = ((score + 8) / 16) * 100;
 
   const isMate = Math.abs(evalScore) > 1000;
@@ -20,24 +21,33 @@ export const EvalBar: React.FC<EvalBarProps> = ({ evalScore, isBlunder }) => {
   const whiteWinning = evalScore > 0;
 
   return (
-    <div className={`relative h-full w-8 bg-gray-900 overflow-hidden rounded-l-md border-y border-l border-white/10 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)] flex flex-col ${isBlunder ? 'ring-2 ring-red-500' : ''}`}>
-      {/* Black's section (Top) */}
-      <div className="absolute top-0 w-full bg-gradient-to-b from-gray-900 to-gray-800 transition-all duration-700 ease-in-out" style={{ height: `${100 - whitePercent}%` }} />
+    <div className={`relative h-full w-full bg-[#1a1a1a] overflow-hidden ${isBlunder ? 'ring-2 ring-red-500' : ''}`}>
+      {/* Black's section (Top) - handled by the background of the parent */}
       
       {/* White's section (Bottom) */}
-      <div className="absolute bottom-0 w-full bg-gradient-to-t from-gray-100 to-[#F5F5DC] transition-all duration-700 ease-in-out shadow-[0_-2px_10px_rgba(255,255,255,0.2)]" style={{ height: `${whitePercent}%` }} />
+      <div 
+        className="absolute bottom-0 w-full bg-[#e8e8e8]" 
+        style={{ 
+          height: `${whitePercent}%`, 
+          transition: 'height 0.4s ease' 
+        }} 
+      />
 
       {/* The Following Label */}
       <div 
-        className="absolute w-full flex items-center justify-center transition-all duration-700 ease-in-out z-10 pointer-events-none"
-        style={{ bottom: `${whitePercent}%`, transform: 'translateY(50%)' }}
+        className="absolute w-full flex items-center justify-center pointer-events-none z-10"
+        style={{ 
+          bottom: `${whitePercent}%`, 
+          transform: whiteWinning ? 'translateY(100%)' : 'translateY(-100%)',
+          transition: 'bottom 0.4s ease, transform 0.4s ease'
+        }}
       >
-        <div className={`px-1.5 py-0.5 rounded text-[10px] font-black shadow-md border ${whiteWinning ? 'bg-white text-black border-gray-300' : 'bg-gray-800 text-white border-gray-600'}`}>
+        <div className={`px-1 rounded-[2px] text-[10px] font-bold tracking-tighter shadow-sm mb-1 mt-1 ${whiteWinning ? 'bg-[#e8e8e8] text-[#1a1a1a]' : 'bg-[#1a1a1a] text-[#e8e8e8]'}`}>
           {displayScore}
         </div>
       </div>
       
-      {isBlunder && <div className="absolute inset-0 bg-red-500/20 animate-pulse pointer-events-none" />}
+      {isBlunder && <div className="absolute inset-0 bg-red-500/20 animate-pulse pointer-events-none z-20" />}
     </div>
   );
 };

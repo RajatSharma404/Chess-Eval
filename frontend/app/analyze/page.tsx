@@ -8,7 +8,7 @@ import { MoveList } from '../../components/MoveList';
 import { LiveEngine } from '../../components/LiveEngine';
 import { CoachChat } from '../../components/CoachChat';
 import { BrilliantGem } from '../../components/BrilliantGem';
-import { ChevronLeft, ChevronRight, Home, LayoutDashboard, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Home, LayoutDashboard, X, Menu } from 'lucide-react';
 import { getCurrentOpening } from '../../lib/openings';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
@@ -25,6 +25,7 @@ export default function AnalyzePage() {
   const [boardOrientation, setBoardOrientation] = React.useState<'white' | 'black'>('white');
   const [activeTab, setActiveTab] = React.useState<'analysis' | 'coach'>('analysis');
   const [brilliantIndex, setBrilliantIndex] = React.useState<number | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -58,6 +59,10 @@ export default function AnalyzePage() {
         setCurrentMoveIndex(currentMoveIndex + 1);
       } else if (e.key === 'ArrowLeft' && currentMoveIndex > -1) {
         setCurrentMoveIndex(currentMoveIndex - 1);
+      } else if (e.key === 'Home') {
+        setCurrentMoveIndex(-1);
+      } else if (e.key === 'End') {
+        setCurrentMoveIndex(analysisResult.moves.length - 1);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -155,7 +160,7 @@ export default function AnalyzePage() {
 
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(600px,1fr)_1fr] xl:grid-cols-[280px_minmax(500px,1fr)_400px] p-6 gap-6 overflow-hidden max-w-[1800px] mx-auto w-full items-start relative">
         {/* Left Column: Sidebar (Drawer on < xl screens) */}
-        <section className="group absolute xl:static top-6 left-6 z-40 w-[280px] xl:w-auto -translate-x-[120%] xl:translate-x-0 transition-transform duration-300 hover:translate-x-0 focus-within:translate-x-0 xl:flex flex-col gap-4 h-full max-h-[calc(100vh-120px)] overflow-y-auto pr-2 custom-scrollbar bg-[#050505]/95 xl:bg-transparent p-4 xl:p-0 rounded-2xl xl:rounded-none shadow-2xl xl:shadow-none border border-white/10 xl:border-none">
+        <section className={`absolute xl:static top-6 left-6 z-40 w-[280px] xl:w-auto transition-transform duration-300 xl:flex flex-col gap-4 h-full max-h-[calc(100vh-120px)] overflow-y-auto pr-2 custom-scrollbar bg-[#050505]/95 xl:bg-transparent p-4 xl:p-0 rounded-2xl xl:rounded-none shadow-2xl xl:shadow-none border border-white/10 xl:border-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[120%] xl:translate-x-0'}`}>
            <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl shrink-0">
               <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <LayoutDashboard size={14} /> Match Info
@@ -196,72 +201,116 @@ export default function AnalyzePage() {
         </section>
 
         {/* Center Column: Board & Controls */}
-        <section className="flex flex-col w-full items-center justify-center max-w-[800px] mx-auto xl:max-w-none xl:mx-0 xl:items-center h-full max-h-[calc(100vh-120px)] overflow-hidden">
-          <div className="w-full max-w-[calc(100vh-200px)] flex relative shrink-0">
-             <div className="w-6 sm:w-8 shrink-0 mr-1 sm:mr-2">
-               <EvalBar evalScore={currentMove?.eval_after_cp || 0} isBlunder={currentMove?.classification === 'blunder'} />
-             </div>
-             <div className="flex-1 relative">
-               <ChessBoard boardOrientation={boardOrientation} />
-             </div>
-          </div>
+        <section className="flex flex-col w-full h-[calc(100vh-56px)] justify-center mx-auto xl:max-w-none xl:mx-0 relative max-w-[800px] xl:px-4">
+          
+          {/* Hamburger (only below xl) */}
+          <button 
+            className="xl:hidden absolute top-4 left-0 z-50 p-2.5 bg-gray-900/80 backdrop-blur-md rounded-xl hover:bg-gray-800 transition-colors border border-white/10 shadow-lg"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            title="Toggle Match Info"
+          >
+            <Menu size={20} className="text-gray-300" />
+          </button>
 
-          <div className="flex items-center relative bg-gray-900/60 backdrop-blur-xl rounded-b-2xl p-3 border border-white/10 border-t-0 shadow-2xl w-full shrink-0 min-h-[64px]">
-            {/* Center Controls */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center gap-1 sm:gap-2 w-max">
-              <button 
-                disabled={currentMoveIndex <= -1}
-                onClick={() => setCurrentMoveIndex(-1)}
-                className="p-2 sm:p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90"
-                title="Go to Start"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button 
-                disabled={currentMoveIndex <= -1}
-                onClick={() => setCurrentMoveIndex(currentMoveIndex - 1)}
-                className="p-2 sm:p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90 bg-white/5"
-                title="Previous Move (Left Arrow)"
-              >
-                <ChevronLeft size={24} />
-              </button>
-              
-              <div className="px-2 sm:px-6 text-center min-w-[80px] sm:min-w-[120px]">
-                 <p className="text-[9px] text-gray-500 uppercase font-black tracking-[0.2em] mb-0.5">Position</p>
-                 <p className="text-lg sm:text-xl font-mono font-black text-white">
-                   {currentMoveIndex === -1 ? 'Start' : currentMove?.move_san}
-                 </p>
-              </div>
-              
-              <button 
-                disabled={currentMoveIndex >= analysisResult.moves.length - 1}
-                onClick={() => setCurrentMoveIndex(currentMoveIndex + 1)}
-                className="p-2 sm:p-3 hover:bg-amber-500/20 disabled:opacity-20 rounded-xl transition-all active:scale-90 bg-amber-500/10 text-amber-400"
-                title="Next Move (Right Arrow)"
-              >
-                <ChevronRight size={24} />
-              </button>
-              <button 
-                disabled={currentMoveIndex >= analysisResult.moves.length - 1}
-                onClick={() => setCurrentMoveIndex(analysisResult.moves.length - 1)}
-                className="p-2 sm:p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90"
-                title="Go to End"
-              >
-                <ChevronRight size={20} />
-              </button>
+          <div className="w-full flex flex-col items-center justify-center relative">
+            {/* Board + Eval Row */}
+            <div className="w-full flex relative shrink-0" style={{ maxWidth: 'calc(100vh - 120px)' }}>
+               <div className="w-6 sm:w-8 shrink-0">
+                 <EvalBar evalScore={currentMove?.eval_after_cp || 0} isBlunder={currentMove?.classification === 'blunder'} />
+               </div>
+               <div className="flex-1 relative aspect-square">
+                 <ChessBoard boardOrientation={boardOrientation} />
+               </div>
             </div>
 
-            {/* Right side - Flip board */}
-            <div className="ml-auto flex items-center">
-              <div className="w-[1px] h-8 bg-white/10 mx-2 hidden sm:block"></div>
+            {/* Scrubber & Controls Row */}
+            <div className="w-full flex flex-col shrink-0" style={{ maxWidth: 'calc(100vh - 120px)' }}>
               
-              <button 
-                onClick={() => setBoardOrientation(o => o === 'white' ? 'black' : 'white')}
-                className="px-4 py-2.5 bg-gray-800 text-gray-300 font-bold rounded-xl hover:bg-gray-700 transition-all border border-gray-600 shadow-md text-[10px] uppercase tracking-widest hidden sm:flex items-center gap-2 active:scale-95"
-                title="Flip Board (Shortcut: F)"
+              {/* Progress Scrubber */}
+              <div 
+                className="w-full h-[3px] bg-zinc-700 cursor-pointer relative"
+                onPointerDown={(e) => {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  const handleScrub = (clientX: number, target: Element) => {
+                    const rect = target.getBoundingClientRect();
+                    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+                    const percent = x / rect.width;
+                    const totalMoves = analysisResult.moves.length;
+                    const targetIndex = Math.min(totalMoves - 1, Math.max(-1, Math.floor(percent * (totalMoves + 1)) - 1));
+                    setCurrentMoveIndex(targetIndex);
+                  };
+                  handleScrub(e.clientX, e.currentTarget);
+                  e.currentTarget.onpointermove = (ev: PointerEvent) => handleScrub(ev.clientX, ev.currentTarget as Element);
+                }}
+                onPointerUp={(e) => {
+                  e.currentTarget.releasePointerCapture(e.pointerId);
+                  e.currentTarget.onpointermove = null;
+                }}
               >
-                Flip board
-              </button>
+                <div 
+                  className="h-full bg-[#fbbf24] transition-all duration-100 ease-out" 
+                  style={{ width: `${((currentMoveIndex + 1) / (analysisResult.moves.length || 1)) * 100}%` }}
+                />
+              </div>
+
+              {/* Bottom Controls Strip */}
+              <div className="flex items-center relative bg-gray-900/60 backdrop-blur-xl p-3 border-x border-b border-white/10 shadow-2xl w-full min-h-[64px]">
+                {/* Center Controls */}
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center gap-1 sm:gap-2 w-max">
+                  <button 
+                    disabled={currentMoveIndex <= -1}
+                    onClick={() => setCurrentMoveIndex(-1)}
+                    className="p-2 sm:p-2.5 hover:bg-zinc-800 disabled:opacity-20 rounded-md transition-colors duration-150 active:scale-95"
+                    title="Start (Home key)"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button 
+                    disabled={currentMoveIndex <= -1}
+                    onClick={() => setCurrentMoveIndex(currentMoveIndex - 1)}
+                    className="p-2 sm:p-2.5 hover:bg-zinc-800 disabled:opacity-20 rounded-md transition-colors duration-150 active:scale-95"
+                    title="Previous (← key)"
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                  
+                  <div className="px-2 sm:px-6 text-center min-w-[80px] sm:min-w-[140px]">
+                     <p className="text-lg sm:text-xl font-mono font-black text-white">
+                       {currentMoveIndex === -1 ? 'Start' : `Move ${Math.floor(currentMoveIndex / 2) + 1} · ${currentMove?.move_san}`}
+                     </p>
+                  </div>
+                  
+                  <button 
+                    disabled={currentMoveIndex >= analysisResult.moves.length - 1}
+                    onClick={() => setCurrentMoveIndex(currentMoveIndex + 1)}
+                    className="p-2 sm:p-2.5 hover:bg-zinc-800 disabled:opacity-20 rounded-md transition-colors duration-150 active:scale-95"
+                    title="Next (→ key)"
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                  <button 
+                    disabled={currentMoveIndex >= analysisResult.moves.length - 1}
+                    onClick={() => setCurrentMoveIndex(analysisResult.moves.length - 1)}
+                    className="p-2 sm:p-2.5 hover:bg-zinc-800 disabled:opacity-20 rounded-md transition-colors duration-150 active:scale-95"
+                    title="End (End key)"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+
+                {/* Right side - Flip board */}
+                <div className="ml-auto flex items-center">
+                  <div className="w-[1px] h-8 bg-white/10 mx-2 hidden sm:block"></div>
+                  
+                  <button 
+                    onClick={() => setBoardOrientation(o => o === 'white' ? 'black' : 'white')}
+                    className="px-4 py-2.5 bg-gray-800 text-gray-300 font-bold rounded-xl hover:bg-gray-700 transition-all border border-gray-600 shadow-md text-[10px] uppercase tracking-widest hidden sm:flex items-center gap-2 active:scale-95"
+                    title="Flip Board (Shortcut: F)"
+                  >
+                    Flip board
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
