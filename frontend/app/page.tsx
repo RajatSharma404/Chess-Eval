@@ -5,7 +5,8 @@ import { useGameStore } from '../store/useGameStore';
 import { analyzeGame } from '../lib/api';
 import { Search, Sparkles, User } from 'lucide-react';
 import axios from 'axios';
-import { HeroKnight } from '../components/HeroKnight';
+import dynamic from 'next/dynamic';
+const HeroKnight = dynamic(() => import('../components/HeroKnight').then(mod => mod.HeroKnight), { ssr: false });
 import { LoadingPiece } from '../components/LoadingPiece';
 import { formatDistanceToNow } from 'date-fns';
 

@@ -122,6 +122,8 @@ export const MoveList: React.FC = () => {
     );
   };
 
+
+
   return (
     <div ref={scrollRef} className="h-full flex flex-col bg-gray-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
       
@@ -211,7 +213,6 @@ export const MoveList: React.FC = () => {
             })}
           </div>
         </div>
-      
       {originalAnalysisResult && analysisResult !== originalAnalysisResult && (
         <div className="sticky bottom-0 p-4 mt-4 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent flex justify-center z-20">
           <button 

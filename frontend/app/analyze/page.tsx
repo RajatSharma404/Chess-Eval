@@ -9,6 +9,7 @@ import { LiveEngine } from '../../components/LiveEngine';
 import { CoachChat } from '../../components/CoachChat';
 import { BrilliantGem } from '../../components/BrilliantGem';
 import { ChevronLeft, ChevronRight, Home, LayoutDashboard, X } from 'lucide-react';
+import { getCurrentOpening } from '../../lib/openings';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
@@ -87,6 +88,7 @@ export default function AnalyzePage() {
   if (!analysisResult) return null;
 
   const currentMove = currentMoveIndex >= 0 ? analysisResult.moves[currentMoveIndex] : null;
+  const currentOpening = getCurrentOpening(analysisResult.moves, currentMoveIndex);
 
   const getAccuracyColor = (acc: number) => {
     if (acc >= 90) return 'text-emerald-400';
@@ -178,7 +180,14 @@ export default function AnalyzePage() {
            
            <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl shrink-0">
               <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Opening Setup</h2>
-              <p className="text-sm font-bold text-emerald-400 leading-relaxed bg-emerald-900/20 p-3 rounded-xl border border-emerald-500/20">{analysisResult.opening}</p>
+              <p className="text-sm font-bold text-emerald-400 leading-relaxed bg-emerald-900/20 p-3 rounded-xl border border-emerald-500/20">
+                <span className="flex items-center gap-2">
+                  {currentOpening.eco !== '?' && (
+                    <span className="px-1.5 py-0.5 bg-emerald-500/20 border border-emerald-500/30 rounded text-[10px] font-mono">{currentOpening.eco}</span>
+                  )}
+                  {currentOpening.name}
+                </span>
+              </p>
            </div>
 
            <div className="flex-1 overflow-hidden flex flex-col">
@@ -188,16 +197,22 @@ export default function AnalyzePage() {
 
         {/* Center Column: Board & Controls */}
         <section className="flex flex-col w-full items-center justify-center max-w-[800px] mx-auto xl:max-w-none xl:mx-0 xl:items-center h-full max-h-[calc(100vh-120px)] overflow-hidden">
-          <div className="w-full max-w-[calc(100vh-200px)] relative shrink-0">
-             <ChessBoard boardOrientation={boardOrientation} />
+          <div className="w-full max-w-[calc(100vh-200px)] flex relative shrink-0">
+             <div className="w-6 sm:w-8 shrink-0 mr-1 sm:mr-2">
+               <EvalBar evalScore={currentMove?.eval_after_cp || 0} isBlunder={currentMove?.classification === 'blunder'} />
+             </div>
+             <div className="flex-1 relative">
+               <ChessBoard boardOrientation={boardOrientation} />
+             </div>
           </div>
 
-          <div className="flex items-center justify-between bg-gray-900/60 backdrop-blur-xl rounded-b-2xl p-3 border border-white/10 border-t-0 shadow-2xl w-full shrink-0">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center relative bg-gray-900/60 backdrop-blur-xl rounded-b-2xl p-3 border border-white/10 border-t-0 shadow-2xl w-full shrink-0 min-h-[64px]">
+            {/* Center Controls */}
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center gap-1 sm:gap-2 w-max">
               <button 
                 disabled={currentMoveIndex <= -1}
                 onClick={() => setCurrentMoveIndex(-1)}
-                className="p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90"
+                className="p-2 sm:p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90"
                 title="Go to Start"
               >
                 <ChevronLeft size={20} />
@@ -205,25 +220,23 @@ export default function AnalyzePage() {
               <button 
                 disabled={currentMoveIndex <= -1}
                 onClick={() => setCurrentMoveIndex(currentMoveIndex - 1)}
-                className="p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90 bg-white/5"
+                className="p-2 sm:p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90 bg-white/5"
                 title="Previous Move (Left Arrow)"
               >
                 <ChevronLeft size={24} />
               </button>
-            </div>
-            
-            <div className="px-6 text-center min-w-[120px]">
-               <p className="text-[9px] text-gray-500 uppercase font-black tracking-[0.2em] mb-0.5">Position</p>
-               <p className="text-xl font-mono font-black text-white">
-                 {currentMoveIndex === -1 ? 'Start' : currentMove?.move_san}
-               </p>
-            </div>
-            
-            <div className="flex items-center gap-2">
+              
+              <div className="px-2 sm:px-6 text-center min-w-[80px] sm:min-w-[120px]">
+                 <p className="text-[9px] text-gray-500 uppercase font-black tracking-[0.2em] mb-0.5">Position</p>
+                 <p className="text-lg sm:text-xl font-mono font-black text-white">
+                   {currentMoveIndex === -1 ? 'Start' : currentMove?.move_san}
+                 </p>
+              </div>
+              
               <button 
                 disabled={currentMoveIndex >= analysisResult.moves.length - 1}
                 onClick={() => setCurrentMoveIndex(currentMoveIndex + 1)}
-                className="p-3 hover:bg-amber-500/20 disabled:opacity-20 rounded-xl transition-all active:scale-90 bg-amber-500/10 text-amber-400"
+                className="p-2 sm:p-3 hover:bg-amber-500/20 disabled:opacity-20 rounded-xl transition-all active:scale-90 bg-amber-500/10 text-amber-400"
                 title="Next Move (Right Arrow)"
               >
                 <ChevronRight size={24} />
@@ -231,22 +244,25 @@ export default function AnalyzePage() {
               <button 
                 disabled={currentMoveIndex >= analysisResult.moves.length - 1}
                 onClick={() => setCurrentMoveIndex(analysisResult.moves.length - 1)}
-                className="p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90"
+                className="p-2 sm:p-3 hover:bg-white/5 disabled:opacity-20 rounded-xl transition-all active:scale-90"
                 title="Go to End"
               >
                 <ChevronRight size={20} />
               </button>
             </div>
 
-            <div className="w-[1px] h-8 bg-white/10 mx-2 hidden sm:block"></div>
-            
-            <button 
-              onClick={() => setBoardOrientation(o => o === 'white' ? 'black' : 'white')}
-              className="px-4 py-2.5 bg-gray-800 text-gray-300 font-bold rounded-xl hover:bg-gray-700 transition-all border border-gray-600 shadow-md text-[10px] uppercase tracking-widest hidden sm:flex items-center gap-2 active:scale-95"
-              title="Flip Board (Shortcut: F)"
-            >
-              Flip board
-            </button>
+            {/* Right side - Flip board */}
+            <div className="ml-auto flex items-center">
+              <div className="w-[1px] h-8 bg-white/10 mx-2 hidden sm:block"></div>
+              
+              <button 
+                onClick={() => setBoardOrientation(o => o === 'white' ? 'black' : 'white')}
+                className="px-4 py-2.5 bg-gray-800 text-gray-300 font-bold rounded-xl hover:bg-gray-700 transition-all border border-gray-600 shadow-md text-[10px] uppercase tracking-widest hidden sm:flex items-center gap-2 active:scale-95"
+                title="Flip Board (Shortcut: F)"
+              >
+                Flip board
+              </button>
+            </div>
           </div>
         </section>
 
