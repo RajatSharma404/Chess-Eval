@@ -188,27 +188,35 @@ export function LiveEngine() {
         </button>
 
         {/* Engine Lines */}
-        <div className="space-y-2">
+        <div className="space-y-2 relative pb-2">
+          <div className="text-[10px] text-zinc-500 uppercase tracking-wide font-black mb-3">Top Engine Moves</div>
           {engineLines.length > 0 ? engineLines.map((line, idx) => (
             <div 
               key={idx} 
               onClick={() => handleLineClick(line)}
-              className="flex items-center gap-3 text-sm group cursor-pointer hover:bg-white/5 p-2 -mx-2 rounded-lg transition-all border border-transparent hover:border-white/10"
+              className="flex items-center gap-3 text-sm group cursor-pointer hover:bg-white/5 p-2 -mx-2 rounded-lg transition-all border border-transparent hover:border-white/10 relative"
             >
-              <div className={`w-6 h-6 flex items-center justify-center font-black text-lg drop-shadow-md ${idx === 0 ? 'text-amber-400' : 'text-emerald-400/80'}`}>
+              <div className="w-6 h-6 flex items-center justify-center font-black text-lg drop-shadow-md text-zinc-400">
                 {getPieceIcon(line.firstMovePiece)}
               </div>
               <div className="font-black text-white w-8">
                 {line.firstMoveSan}
               </div>
-              <div className="px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm bg-gray-800 text-white border border-gray-600 min-w-[42px] text-center">
+              <div className="px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm bg-zinc-700 text-zinc-100 min-w-[42px] text-center">
                 {formatScore(line.displayScore, line.isMate)}
               </div>
-              <div 
-                className="text-gray-400 font-medium flex-1 truncate text-xs transition-colors group-hover:text-white"
-                title={line.sanSequence.split(' ').slice(1).join(' ')}
-              >
-                {line.sanSequence.split(' ').slice(1).join(' ')}
+              
+              <div className="relative flex-1 min-w-0">
+                <div className="text-gray-400 font-medium truncate text-xs transition-colors group-hover:text-white">
+                  {line.sanSequence.split(' ').slice(1).join(' ')}
+                </div>
+                {/* Tooltip */}
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50">
+                  <div className="bg-zinc-900 border border-white/10 shadow-xl rounded-lg p-3 text-xs text-zinc-300 w-max max-w-xs whitespace-pre-wrap font-medium">
+                    <span className="font-bold text-white mr-2">{line.firstMoveSan}</span>
+                    {line.sanSequence.split(' ').slice(1).join(' ')}
+                  </div>
+                </div>
               </div>
             </div>
           )) : engineOn ? (
