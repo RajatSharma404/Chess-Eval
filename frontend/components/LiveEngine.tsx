@@ -156,7 +156,7 @@ export function LiveEngine() {
   };
 
   return (
-    <div className="flex-none flex flex-col bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+    <div className="flex-1 w-full flex flex-col bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl min-h-0">
 
       <div className="p-4 flex-1 flex flex-col min-h-0">
         {/* Engine Header */}
