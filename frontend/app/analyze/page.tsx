@@ -8,7 +8,7 @@ import { MoveList } from '../../components/MoveList';
 import { LiveEngine } from '../../components/LiveEngine';
 import { CoachChat } from '../../components/CoachChat';
 import { BrilliantGem } from '../../components/BrilliantGem';
-import { ChevronLeft, ChevronRight, Home, LayoutDashboard, X, Menu, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Home, LayoutDashboard, X, Menu, ExternalLink, Link2, Volume2, VolumeX } from 'lucide-react';
 import { getCurrentOpening } from '../../lib/openings';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
@@ -21,13 +21,80 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 }
 
 export default function AnalyzePage() {
-  const { analysisResult, currentMoveIndex, setCurrentMoveIndex, reset } = useGameStore();
+  const { 
+    analysisResult, 
+    currentMoveIndex, 
+    previewMoveIndex,
+    setCurrentMoveIndex, 
+    reset 
+  } = useGameStore();
   const [boardOrientation, setBoardOrientation] = React.useState<'white' | 'black'>('white');
   const [activeTab, setActiveTab] = React.useState<'analysis' | 'coach'>('analysis');
   const [brilliantIndex, setBrilliantIndex] = React.useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isOpeningOpen, setIsOpeningOpen] = React.useState(false);
+  const [soundEnabled, setSoundEnabled] = React.useState(true);
+  const [showBrilliantFlash, setShowBrilliantFlash] = React.useState(false);
+  const [toastMessage, setToastMessage] = React.useState('');
+  const prevMoveRef = React.useRef(-1);
   const router = useRouter();
+
+  useEffect(() => {
+    const pref = localStorage.getItem('mastermind_sound');
+    if (pref) setSoundEnabled(pref === '1');
+  }, []);
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    localStorage.setItem('mastermind_sound', next ? '1' : '0');
+  };
+
+  useEffect(() => {
+    if (Math.abs(currentMoveIndex - prevMoveRef.current) === 1) { // single step
+      if (currentMoveIndex >= 0) {
+        const move = analysisResult?.moves[currentMoveIndex];
+        if (move?.classification === 'brilliant') {
+          setShowBrilliantFlash(true);
+          setTimeout(() => setShowBrilliantFlash(false), 1500);
+        }
+      }
+    }
+    
+    if (soundEnabled && currentMoveIndex >= 0 && currentMoveIndex !== prevMoveRef.current) {
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(400, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.05);
+          gain.gain.setValueAtTime(1, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.05);
+        }
+      } catch (e) {}
+    }
+    
+    prevMoveRef.current = currentMoveIndex;
+  }, [currentMoveIndex, analysisResult, soundEnabled]);
+
+  const handleShare = () => {
+    if (analysisResult) {
+      const fen = currentMoveIndex === -1 ? 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' : analysisResult.moves[currentMoveIndex].fen_after;
+      const url = new URL(window.location.href);
+      url.searchParams.set('fen', fen || '');
+      url.searchParams.set('move', (currentMoveIndex + 1).toString());
+      navigator.clipboard.writeText(url.toString());
+      setToastMessage('Position link copied!');
+      setTimeout(() => setToastMessage(''), 2000);
+    }
+  };
 
   useEffect(() => {
     if (!analysisResult) {
@@ -93,7 +160,8 @@ export default function AnalyzePage() {
 
   if (!analysisResult) return null;
 
-  const currentMove = currentMoveIndex >= 0 ? analysisResult.moves[currentMoveIndex] : null;
+  const activeMoveIndex = previewMoveIndex !== null ? previewMoveIndex : currentMoveIndex;
+  const currentMove = activeMoveIndex >= 0 && analysisResult ? analysisResult.moves[activeMoveIndex] : null;
   const currentOpening = getCurrentOpening(analysisResult.moves, currentMoveIndex);
 
   const getAccuracyColor = (acc: number) => {
@@ -114,7 +182,7 @@ export default function AnalyzePage() {
   }
 
   // Material Calc
-  const currentFen = currentMove?.fen_after || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const currentFen = activeMoveIndex === -1 ? 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' : (currentMove?.fen_after || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   const boardFen = currentFen.split(' ')[0];
   const fenCounts = { P:0, N:0, B:0, R:0, Q:0, p:0, n:0, b:0, r:0, q:0 };
   for (const char of boardFen) {
@@ -314,12 +382,20 @@ export default function AnalyzePage() {
 
           <div className="w-full flex flex-col items-center justify-center relative">
             {/* Board + Eval Row */}
-            <div className="w-full flex relative shrink-0" style={{ maxWidth: 'calc(100vh - 120px)' }}>
-               <div className="w-6 sm:w-8 shrink-0">
+            <div className={`w-full aspect-square flex relative shrink-0 transition-all shadow-2xl rounded-t-xl overflow-hidden border-[6px] border-b-0 border-gray-800 bg-gray-800 ${showBrilliantFlash ? 'shadow-[0_0_0_3px_rgba(6,182,212,0.5)] animate-pulse' : ''}`} style={{ maxWidth: 'calc(100vh - 120px)' }}>
+               <div className="w-6 sm:w-8 shrink-0 border-r border-gray-800/50">
                  <EvalBar evalScore={currentMove?.eval_after_cp || 0} isBlunder={currentMove?.classification === 'blunder'} />
                </div>
-               <div className="flex-1 relative aspect-square">
+               <div className="flex-1 relative h-full">
                  <ChessBoard boardOrientation={boardOrientation} />
+                 
+                 {showBrilliantFlash && (
+                    <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+                       <div className="bg-black/70 backdrop-blur-sm rounded-xl px-6 py-3 border border-cyan-500/30 shadow-2xl animate-in fade-in duration-150 zoom-in-95">
+                         <span className="font-bold text-lg text-[#06b6d4]">✦ Brilliant Move</span>
+                       </div>
+                    </div>
+                 )}
                </div>
             </div>
 
@@ -354,7 +430,7 @@ export default function AnalyzePage() {
               </div>
 
               {/* Bottom Controls Strip */}
-              <div className="flex items-center relative bg-gray-900/60 backdrop-blur-xl p-3 border-x border-b border-white/10 shadow-2xl w-full min-h-[64px]">
+              <div className="flex items-center relative bg-gray-900/60 backdrop-blur-xl p-3 border-x border-b border-white/10 shadow-2xl w-full min-h-[64px] rounded-b-xl border-[6px] border-t-0 border-gray-800">
                 {/* Center Controls */}
                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center gap-1 sm:gap-2 w-max">
                   <button 
@@ -398,9 +474,24 @@ export default function AnalyzePage() {
                   </button>
                 </div>
 
-                {/* Right side - Flip board */}
-                <div className="ml-auto flex items-center">
-                  <div className="w-[1px] h-8 bg-white/10 mx-2 hidden sm:block"></div>
+                {/* Right side - Sound, Share, Flip board */}
+                <div className="ml-auto flex items-center gap-1 sm:gap-2">
+                  <button 
+                    onClick={toggleSound}
+                    className="p-2 sm:p-2.5 hover:bg-zinc-800 rounded-md transition-colors duration-150 active:scale-95 text-gray-400 hover:text-white"
+                    title={soundEnabled ? "Disable sound" : "Enable sound"}
+                  >
+                    {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                  </button>
+                  <button 
+                    onClick={handleShare}
+                    className="p-2 sm:p-2.5 hover:bg-zinc-800 rounded-md transition-colors duration-150 active:scale-95 text-gray-400 hover:text-white"
+                    title="Share position"
+                  >
+                    <Link2 size={20} />
+                  </button>
+
+                  <div className="w-[1px] h-8 bg-white/10 mx-1 hidden sm:block"></div>
                   
                   <button 
                     onClick={() => setBoardOrientation(o => o === 'white' ? 'black' : 'white')}
@@ -419,18 +510,18 @@ export default function AnalyzePage() {
         <section className="w-full flex flex-col h-full max-h-[calc(100vh-120px)] overflow-hidden gap-4 bg-gray-900/20 rounded-2xl border border-white/5 p-2">
           {/* Tabs */}
           <div className="flex items-center text-[10px] sm:text-xs font-bold text-gray-500 border-b border-white/10 shrink-0 px-2 uppercase tracking-widest">
-             <button className="flex-1 py-3 hover:text-gray-300 transition-colors">Report</button>
+             <button className="flex-1 py-3 hover:text-zinc-100 transition-colors duration-150">Report</button>
              <button 
                onClick={() => setActiveTab('analysis')} 
-               className={`flex-1 py-3 transition-colors ${activeTab === 'analysis' ? 'text-amber-400 border-b-2 border-amber-400' : 'hover:text-gray-300'}`}>
+               className={`flex-1 py-3 transition-colors duration-150 ${activeTab === 'analysis' ? 'text-amber-400 border-b-2 border-amber-400' : 'hover:text-zinc-100'}`}>
                Analysis
              </button>
              <button 
                onClick={() => setActiveTab('coach')} 
-               className={`flex-1 py-3 transition-colors ${activeTab === 'coach' ? 'text-amber-400 border-b-2 border-amber-400' : 'hover:text-gray-300'}`}>
+               className={`flex-1 py-3 transition-colors duration-150 ${activeTab === 'coach' ? 'text-amber-400 border-b-2 border-amber-400' : 'hover:text-zinc-100'}`}>
                Coach
              </button>
-             <button className="flex-1 py-3 hover:text-gray-300 transition-colors">Settings</button>
+             <button className="flex-1 py-3 hover:text-zinc-100 transition-colors duration-150">Settings</button>
           </div>
           
           {activeTab === 'analysis' ? (
@@ -459,6 +550,14 @@ export default function AnalyzePage() {
           <button onClick={() => setBrilliantIndex(null)} className="absolute top-2 right-2 text-cyan-200/50 hover:text-cyan-200">
             <X size={14} />
           </button>
+        </div>
+      )}
+
+      {/* Share Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 bg-emerald-500 text-white px-6 py-3 rounded-xl shadow-2xl z-50 font-bold animate-in slide-in-from-bottom-5 fade-in flex items-center gap-2">
+          <Link2 size={18} />
+          {toastMessage}
         </div>
       )}
     </div>

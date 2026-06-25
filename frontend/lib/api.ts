@@ -1,7 +1,6 @@
-import { AnalysisResult } from '../store/useGameStore';
+import { AnalysisResult, AnalysisProgress } from '../store/useGameStore';
 import { analyzeGameLocal } from './analyzer';
 
-export function analyzeGame(url: string, onProgress: (status: string) => void): Promise<AnalysisResult> {
+export function analyzeGame(url: string, onProgress: (status: AnalysisProgress | string) => void): Promise<AnalysisResult> {
   return analyzeGameLocal(url, onProgress);
 }
-

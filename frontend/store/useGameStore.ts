@@ -36,19 +36,29 @@ export interface AnalysisResult {
   suggestions: Suggestion[];
 }
 
+export interface AnalysisProgress {
+  status: string;
+  currentMove?: number;
+  totalMoves?: number;
+  currentLine?: string;
+  isComplete?: boolean;
+}
+
 interface GameState {
   gameUrl: string;
   analysisResult: AnalysisResult | null;
   originalAnalysisResult: AnalysisResult | null;
   currentMoveIndex: number;
+  previewMoveIndex: number | null;
   isLoading: boolean;
   error: string | null;
-  progressStatus: string | null;
+  progressStatus: AnalysisProgress | null;
   setGameUrl: (url: string) => void;
   setAnalysisResult: (result: AnalysisResult) => void;
   setCurrentMoveIndex: (index: number) => void;
+  setPreviewMoveIndex: (index: number | null) => void;
   setLoading: (loading: boolean) => void;
-  setProgressStatus: (status: string | null) => void;
+  setProgressStatus: (status: AnalysisProgress | string | null) => void;
   setError: (error: string | null) => void;
   reset: () => void;
   branchGame: (newMoves: Move[], newIndex: number) => void;
@@ -60,14 +70,22 @@ export const useGameStore = create<GameState>((set) => ({
   analysisResult: null,
   originalAnalysisResult: null,
   currentMoveIndex: -1,
+  previewMoveIndex: null,
   isLoading: false,
   progressStatus: null,
   error: null,
   setGameUrl: (url) => set({ gameUrl: url }),
-  setAnalysisResult: (result) => set({ analysisResult: result, originalAnalysisResult: result, currentMoveIndex: -1 }),
-  setCurrentMoveIndex: (index) => set({ currentMoveIndex: index }),
+  setAnalysisResult: (result) => set({ analysisResult: result, originalAnalysisResult: result, currentMoveIndex: -1, previewMoveIndex: null }),
+  setCurrentMoveIndex: (index) => set({ currentMoveIndex: index, previewMoveIndex: null }),
+  setPreviewMoveIndex: (index) => set({ previewMoveIndex: index }),
   setLoading: (loading) => set({ isLoading: loading }),
-  setProgressStatus: (status) => set({ progressStatus: status }),
+  setProgressStatus: (status) => {
+    if (typeof status === 'string') {
+      set({ progressStatus: { status } });
+    } else {
+      set({ progressStatus: status });
+    }
+  },
   setError: (error) => set({ error }),
   reset: () => set({ gameUrl: '', analysisResult: null, originalAnalysisResult: null, currentMoveIndex: -1, error: null, progressStatus: null }),
   branchGame: (newMoves, newIndex) => set((state) => ({

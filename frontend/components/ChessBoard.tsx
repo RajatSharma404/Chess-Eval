@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import { useGameStore } from '../store/useGameStore';
-import { EvalBar } from './EvalBar';
 
 export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ boardOrientation }) => {
-  const { analysisResult, currentMoveIndex, branchGame } = useGameStore();
+  const { analysisResult, currentMoveIndex, previewMoveIndex, branchGame } = useGameStore();
   
-  const currentMove = currentMoveIndex >= 0 && analysisResult && currentMoveIndex < analysisResult.moves.length 
-    ? analysisResult.moves[currentMoveIndex] 
+  const activeMoveIndex = previewMoveIndex !== null ? previewMoveIndex : currentMoveIndex;
+
+  const currentMove = activeMoveIndex >= 0 && analysisResult && activeMoveIndex < analysisResult.moves.length 
+    ? analysisResult.moves[activeMoveIndex] 
     : null;
   const fen = currentMove?.fen_after ? currentMove.fen_after : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -49,7 +50,7 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ 
       arrows.push([best.slice(0, 2), best.slice(2, 4), 'rgba(16, 185, 129, 0.8)']); // Green for best move
     }
 
-    const suggestion = analysisResult?.suggestions?.find(s => s.move_index === currentMoveIndex);
+    const suggestion = analysisResult?.suggestions?.find(s => s.move_index === activeMoveIndex);
     if (suggestion?.arrow && suggestion.arrow.length === 2) {
         // Only push if it differs from best and played
         const [from, to] = suggestion.arrow;
@@ -74,7 +75,7 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ 
       });
       
       if (move) {
-        const previousMoves = analysisResult.moves.slice(0, currentMoveIndex + 1);
+        const previousMoves = analysisResult.moves.slice(0, activeMoveIndex + 1);
         const evalScore = currentMove ? currentMove.eval_after_cp : 0; 
         
         const newMove: any = {
@@ -103,21 +104,15 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ 
   };
 
   return (
-    <div className="w-full flex shadow-2xl rounded-xl overflow-hidden border-[6px] border-gray-800 bg-gray-800">
-      <EvalBar 
-        evalScore={currentMove ? currentMove.eval_after_cp : 0} 
-        isBlunder={currentMove ? currentMove.classification === 'blunder' : false}
+    <div className="w-full h-full relative z-10">
+      <Chessboard 
+        position={fen} 
+        boardOrientation={boardOrientation}
+        customSquareStyles={getSquareStyles()}
+        customArrows={customArrows() as any}
+        arePiecesDraggable={true}
+        onPieceDrop={handlePieceDrop}
       />
-      <div className="flex-1 aspect-square bg-gray-800 relative z-10">
-        <Chessboard 
-          position={fen} 
-          boardOrientation={boardOrientation}
-          customSquareStyles={getSquareStyles()}
-          customArrows={customArrows() as any}
-          arePiecesDraggable={true}
-          onPieceDrop={handlePieceDrop}
-        />
-      </div>
     </div>
   );
 };

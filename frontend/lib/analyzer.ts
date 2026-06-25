@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import { StockfishEngine } from './engine';
+import { AnalysisProgress } from '../store/useGameStore';
 
 function winProb(cp: number): number {
   const capped = Math.max(-10000, Math.min(10000, cp));
@@ -23,7 +24,7 @@ function classifyMove(cpLoss: number, isBest: boolean, isCapture: boolean): stri
   return 'blunder';
 }
 
-export async function analyzeGameLocal(pgn: string, onProgress: (status: string) => void): Promise<any> {
+export async function analyzeGameLocal(pgn: string, onProgress: (progress: AnalysisProgress | string) => void): Promise<any> {
   const chess = new Chess();
   chess.loadPgn(pgn);
   
@@ -32,7 +33,6 @@ export async function analyzeGameLocal(pgn: string, onProgress: (status: string)
   const blackPlayer = headers['Black'] || 'Black Player';
   const whiteElo = headers['WhiteElo'] || '1500';
   const blackElo = headers['BlackElo'] || '1500';
-  // Use Opening name if available, otherwise ECO, otherwise default.
   const openingName = headers['Opening'] || headers['ECO'] || "Custom Opening";
   
   const history = chess.history({ verbose: true });
@@ -45,16 +45,22 @@ export async function analyzeGameLocal(pgn: string, onProgress: (status: string)
   const whiteCpl: number[] = [];
   const blackCpl: number[] = [];
   
-  onProgress("Initializing WebAssembly Engine...");
+  onProgress({ status: "Initializing WebAssembly Engine..." });
   
   for (let i = 0; i < totalMoves; i++) {
-    onProgress(`Analyzing move ${i + 1}/${totalMoves}...`);
+    const currentLine = history.slice(Math.max(0, i - 4), i + 1).map(m => m.san).join(' ');
+    onProgress({
+      status: `Analyzing move ${i + 1}/${totalMoves}...`,
+      currentMove: i + 1,
+      totalMoves,
+      currentLine: `...${currentLine}`
+    });
     
     const fenBefore = testChess.fen();
     const move = history[i];
     
     // Evaluate before move
-    const infoBefore = await engine.analyzePosition(fenBefore, 12); // lower depth for browser speed
+    const infoBefore = await engine.analyzePosition(fenBefore, 12);
     const evalBeforeCp = infoBefore.evalCp || 0;
     const bestMoveUci = infoBefore.bestMove;
     
@@ -65,9 +71,9 @@ export async function analyzeGameLocal(pgn: string, onProgress: (status: string)
     let evalAfterCp = 0;
     if (testChess.isGameOver()) {
       if (testChess.isCheckmate()) {
-        evalAfterCp = (i % 2 === 0) ? 10000 : -10000; // White just moved (i%2==0) and mated black
+        evalAfterCp = (i % 2 === 0) ? 10000 : -10000;
       } else {
-        evalAfterCp = 0; // Draw
+        evalAfterCp = 0;
       }
     } else {
       const infoAfter = await engine.analyzePosition(fenAfter, 12);
@@ -95,9 +101,9 @@ export async function analyzeGameLocal(pgn: string, onProgress: (status: string)
       fen_before: fenBefore,
       fen_after: fenAfter,
       eval_before_cp: evalBeforeCp,
-      eval_after_cp: i % 2 === 0 ? -evalAfterCp : evalAfterCp, // keep it white's perspective
+      eval_after_cp: i % 2 === 0 ? -evalAfterCp : evalAfterCp,
       best_move_uci: bestMoveUci,
-      best_move_san: bestMoveUci, // approximate
+      best_move_san: bestMoveUci,
       cp_loss: cpLoss,
       classification
     });
@@ -111,7 +117,12 @@ export async function analyzeGameLocal(pgn: string, onProgress: (status: string)
   const whiteAcc = calculateAccuracy(whiteCpl.reduce((a, b) => a + b, 0) / (whiteCpl.length || 1));
   const blackAcc = calculateAccuracy(blackCpl.reduce((a, b) => a + b, 0) / (blackCpl.length || 1));
   
-  onProgress("Generating AI suggestions...");
+  onProgress({
+    status: "Generating AI suggestions...",
+    currentMove: totalMoves,
+    totalMoves,
+    isComplete: true
+  });
   
   // Generate suggestions via Next.js API
   let suggestions = [];
