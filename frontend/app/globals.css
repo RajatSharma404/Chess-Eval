@@ -14,22 +14,13 @@ body {
   overflow-x: hidden;
 }
 
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #52525b #27272a;
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #27272a;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #52525b;
-  border-radius: 99px;
+*::-webkit-scrollbar {
+  display: none !important;
 }
 
 @layer utilities {
