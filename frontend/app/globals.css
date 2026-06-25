@@ -15,12 +15,32 @@ body {
 }
 
 * {
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 *::-webkit-scrollbar {
-  display: none !important;
+  display: none;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: #71717a #3f3f46 !important;
+  -ms-overflow-style: auto !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  display: block !important;
+  width: 3px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #3f3f46 !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #71717a !important;
+  border-radius: 99px !important;
 }
 
 @layer utilities {

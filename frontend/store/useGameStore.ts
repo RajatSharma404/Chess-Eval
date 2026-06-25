@@ -14,6 +14,7 @@ export interface Move {
   best_move_san: string;
   best_move_uci: string;
   top_3_moves?: { move_san: string, cp: number }[];
+  variations?: Move[][];
 }
 
 export interface Suggestion {
@@ -62,6 +63,7 @@ interface GameState {
   setError: (error: string | null) => void;
   reset: () => void;
   branchGame: (newMoves: Move[], newIndex: number) => void;
+  addVariation: (moveIndex: number, variation: Move[]) => void;
   restoreMainline: () => void;
 }
 
@@ -93,6 +95,20 @@ export const useGameStore = create<GameState>((set) => ({
     originalAnalysisResult: state.originalAnalysisResult || state.analysisResult,
     currentMoveIndex: newIndex
   })),
+  addVariation: (moveIndex, variation) => set((state) => {
+    if (!state.analysisResult) return state;
+    const newMoves = [...state.analysisResult.moves];
+    const move = newMoves[moveIndex];
+    if (move) {
+      newMoves[moveIndex] = {
+        ...move,
+        variations: [...(move.variations || []), variation]
+      };
+    }
+    return {
+      analysisResult: { ...state.analysisResult, moves: newMoves }
+    };
+  }),
   restoreMainline: () => set((state) => ({
     analysisResult: state.originalAnalysisResult,
     currentMoveIndex: state.originalAnalysisResult ? state.originalAnalysisResult.moves.length - 1 : -1

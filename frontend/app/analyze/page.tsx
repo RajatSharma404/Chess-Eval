@@ -207,7 +207,7 @@ export default function AnalyzePage() {
   const matDiff = whiteMatScore - blackMatScore;
 
   const renderCaptured = (captured: Record<string, number>, isWhiteCapture: boolean) => {
-    const pieces: string[] = [];
+    const pieces: React.ReactNode[] = [];
     const order = ['q', 'r', 'b', 'n', 'p'];
     const blackSymbols = { q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
     const whiteSymbols = { q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' };
@@ -217,10 +217,10 @@ export default function AnalyzePage() {
       const key = isWhiteCapture ? p : p.toUpperCase();
       const count = captured[key as keyof typeof captured] || 0;
       for (let i = 0; i < count; i++) {
-        pieces.push(symbols[p as keyof typeof symbols]);
+        pieces.push(<span key={`${key}-${i}`} className="text-[14px] leading-none">{symbols[p as keyof typeof symbols]}</span>);
       }
     });
-    return pieces.join('');
+    return pieces.length > 0 ? <div className="flex gap-[2px]">{pieces}</div> : <span className="text-zinc-600 text-xs font-sans">No captures yet</span>;
   };
 
   return (
@@ -242,7 +242,7 @@ export default function AnalyzePage() {
               <h1 className="text-xs font-black text-white uppercase tracking-[0.3em]">Analysis Laboratory</h1>
               <div className="flex items-center gap-2 mt-1 group relative cursor-help">
                 <div className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                 </div>
                 <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Stockfish 17 AVX2 Online</p>
@@ -274,7 +274,7 @@ export default function AnalyzePage() {
                 <span className={`text-xs font-black leading-none ${getAccuracyColor(analysisResult.black_accuracy)}`}>{analysisResult.black_accuracy.toFixed(1)}%</span>
                 <span className="text-[11px] text-zinc-400 uppercase font-black tracking-widest mt-0.5">Black</span>
               </div>
-              <div className="w-6 h-6 bg-[#1e1e1e] border border-white rounded-full flex items-center justify-center font-bold text-white text-[10px] shadow-sm">B</div>
+              <div className="w-6 h-6 bg-[#1e1e1e] ring-1 ring-[#555] rounded-full flex items-center justify-center font-bold text-white text-[10px] shadow-sm">B</div>
             </div>
           </div>
         </div>
@@ -337,14 +337,14 @@ export default function AnalyzePage() {
                <div className="flex items-center justify-between bg-white/5 p-2 rounded-lg border border-white/5">
                  <div className="flex items-center gap-2">
                    <div className="w-4 h-4 bg-[#f0f0f0] rounded-sm flex items-center justify-center text-[#111111] font-black text-[8px]">W</div>
-                   <span className="text-zinc-300 font-serif tracking-widest">{renderCaptured(capturedBlackPieces, true) || <span className="text-zinc-600 text-xs font-sans">No captures yet</span>}</span>
+                   <div className="text-zinc-300 font-serif">{renderCaptured(capturedBlackPieces, true)}</div>
                  </div>
                  {matDiff > 0 && <span className="text-amber-500 font-black text-xs bg-amber-500/10 px-1.5 py-0.5 rounded">+{matDiff}</span>}
                </div>
                <div className="flex items-center justify-between bg-white/5 p-2 rounded-lg border border-white/5">
                  <div className="flex items-center gap-2">
-                   <div className="w-4 h-4 bg-[#1e1e1e] border border-white rounded-sm flex items-center justify-center text-white font-black text-[8px]">B</div>
-                   <span className="text-zinc-300 font-serif tracking-widest">{renderCaptured(capturedWhitePieces, false) || <span className="text-zinc-600 text-xs font-sans">No captures yet</span>}</span>
+                   <div className="w-4 h-4 bg-[#1e1e1e] ring-1 ring-[#555] rounded-sm flex items-center justify-center text-white font-black text-[8px]">B</div>
+                   <div className="text-zinc-400 font-serif">{renderCaptured(capturedWhitePieces, false)}</div>
                  </div>
                  {matDiff < 0 && <span className="text-amber-500 font-black text-xs bg-amber-500/10 px-1.5 py-0.5 rounded">+{Math.abs(matDiff)}</span>}
                </div>
@@ -364,7 +364,7 @@ export default function AnalyzePage() {
                       <span className="text-amber-400 font-mono text-xs bg-black/20 px-1.5 py-0.5 rounded">{currentOpening.eco}</span>
                     )}
                     <span className="text-zinc-500 mx-1">·</span>
-                    <span className="truncate">{currentOpening.name}</span>
+                    <span className="truncate">{currentOpening.name.split(':')[0]}</span>
                   </span>
                 </button>
 
@@ -401,9 +401,9 @@ export default function AnalyzePage() {
             <Menu size={20} className="text-gray-300" />
           </button>
 
-          <div className="w-full flex flex-col items-center justify-center relative">
+          <div className="w-full flex flex-col items-center justify-center relative flex-1 min-h-0" style={{ height: 'calc(100vh - 56px)' }}>
             {/* Board + Eval Row */}
-            <div className={`w-full aspect-square flex relative shrink-0 transition-all shadow-2xl rounded-t-xl overflow-hidden border-[6px] border-b-0 border-gray-800 bg-gray-800 ${showBrilliantFlash ? 'shadow-[0_0_0_3px_rgba(6,182,212,0.5)] animate-pulse' : ''}`} style={{ maxWidth: 'calc(100vh - 120px)' }}>
+            <div className={`w-full aspect-square flex relative shrink transition-all shadow-2xl rounded-t-xl overflow-hidden border-[6px] border-b-0 border-gray-800 bg-gray-800 min-h-0 ${showBrilliantFlash ? 'shadow-[0_0_0_3px_rgba(6,182,212,0.5)] animate-pulse' : ''}`} style={{ maxWidth: 'calc(100vh - 160px)' }}>
                <div className="w-6 sm:w-8 shrink-0 border-r border-gray-800/50">
                  <EvalBar evalScore={currentMove?.eval_after_cp || 0} isBlunder={currentMove?.classification === 'blunder'} />
                </div>
@@ -421,7 +421,7 @@ export default function AnalyzePage() {
             </div>
 
             {/* Scrubber & Controls Row */}
-            <div className="w-full flex flex-col shrink-0" style={{ maxWidth: 'calc(100vh - 120px)' }}>
+            <div className="w-full flex flex-col shrink-0" style={{ maxWidth: 'calc(100vh - 160px)' }}>
               
               {/* Progress Scrubber */}
               <div 

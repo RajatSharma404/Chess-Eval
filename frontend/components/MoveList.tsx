@@ -3,17 +3,17 @@ import { useGameStore } from '../store/useGameStore';
 import { clsx } from 'clsx';
 
 export const MoveList: React.FC = () => {
-  const { analysisResult, originalAnalysisResult, currentMoveIndex, setPreviewMoveIndex, setCurrentMoveIndex, restoreMainline, branchGame } = useGameStore();
+  const { analysisResult, originalAnalysisResult, currentMoveIndex, setPreviewMoveIndex, setCurrentMoveIndex, restoreMainline, branchGame, addVariation } = useGameStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      const activeElement = scrollRef.current.querySelector('.active-move') as HTMLElement;
+    const scrollContainer = document.getElementById('move-list-scroll-container');
+    if (scrollContainer) {
+      const activeElement = scrollContainer.querySelector('.active-move') as HTMLElement;
       if (activeElement) {
-        const container = scrollRef.current;
         const elementRect = activeElement.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
+        const containerRect = scrollContainer.getBoundingClientRect();
         
         if (elementRect.top < containerRect.top || elementRect.bottom > containerRect.bottom) {
           activeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -66,8 +66,8 @@ export const MoveList: React.FC = () => {
     const height = 40; 
     
     const getEvalY = (cp: number) => {
-      const evalCp = Math.max(-800, Math.min(800, cp || 0));
-      return 20 - (evalCp / 800) * 20;
+      const evalCp = cp || 0;
+      return 20 - 20 * (2 / Math.PI) * Math.atan(evalCp / 200);
     };
 
     const pointData = moves.map((m, i) => {
@@ -119,7 +119,7 @@ export const MoveList: React.FC = () => {
           <polygon points={areaPoints} fill="rgba(255,255,255,0.06)" clipPath="url(#above)" />
           <polygon points={areaPoints} fill="rgba(0,0,0,0.4)" clipPath="url(#below)" />
           
-          <line x1="0" y1="20" x2={width} y2="20" stroke="#3f3f46" strokeWidth="1" strokeDasharray="3 3" />
+          <line x1="0" y1="20" x2={width} y2="20" stroke="#3f3f46" strokeWidth="1" strokeDasharray="4 3" />
           
           {pointData.map((p, i) => {
             if (i === 0) return null;
@@ -143,7 +143,7 @@ export const MoveList: React.FC = () => {
                  <line x1={activeX} y1="0" x2={activeX} y2={height} stroke="#52525b" strokeWidth="1" />
                )}
                {hoverIndex === null && (
-                 <line x1={activeX} y1="0" x2={activeX} y2="20" stroke="#fbbf24" strokeWidth="1" opacity="0.4" />
+                 <line x1={activeX} y1={activeY} x2={activeX} y2="20" stroke="#fbbf24" strokeWidth="1" opacity="0.4" />
                )}
                <circle 
                  cx={activeX} 
@@ -177,14 +177,17 @@ export const MoveList: React.FC = () => {
     <div ref={scrollRef} className="h-full flex flex-col bg-gray-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
       
       <div className="p-4 border-b border-white/10 bg-black/20 shrink-0">
-        <div className="flex overflow-x-auto scrollbar-none gap-2 justify-start mb-4 text-[9px] w-full px-1 py-1 whitespace-nowrap">
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#06b6d4] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Brilliant</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#22c55e] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Best</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#86efac] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Excellent</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#4ade80] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Good</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#fbbf24] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Inaccuracy</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#f97316] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Mistake</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#ef4444] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Blunder</span></div>
+        <div 
+          className="flex flex-nowrap overflow-x-auto gap-2.5 justify-start mb-4 text-[10px] w-full px-1 py-1 scrollbar-hide"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#06b6d4] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Brilliant</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#22c55e] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Best</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#86efac] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Excellent</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#4ade80] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Good</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#fbbf24] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Inaccuracy</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#f97316] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Mistake</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#ef4444] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Blunder</span></div>
         </div>
         {renderSparkline()}
 
@@ -207,7 +210,7 @@ export const MoveList: React.FC = () => {
             else if (maxRank === 1) colorCls = 'bg-[#4ade80]';
 
             const isCurrent = Math.floor(currentMoveIndex / 2) === idx;
-            const dotSize = pairs.length > 40 ? 'w-[6px] h-[6px]' : 'w-2 h-2';
+            const dotSize = 'w-[8px] h-[8px]';
 
             return (
               <div 
@@ -217,10 +220,10 @@ export const MoveList: React.FC = () => {
                 title={`Move ${idx + 1}`}
               >
                 <div className={clsx(
-                  "rounded-full transition-transform hover:scale-150", 
+                  "rounded-full transition-all", 
                   dotSize, 
                   colorCls,
-                  isCurrent ? "ring-[1.5px] ring-white ring-offset-1 ring-offset-gray-900" : ""
+                  isCurrent ? "outline outline-[1.5px] outline-white outline-offset-[1px]" : "hover:scale-150"
                 )} />
               </div>
             );
@@ -228,7 +231,7 @@ export const MoveList: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 p-2 custom-scrollbar relative">
+      <div id="move-list-scroll-container" className="flex-1 overflow-y-auto min-h-0 p-2 custom-scrollbar relative">
         <div className="w-full text-sm text-gray-300 flex flex-col">
           <div className="sticky top-0 bg-[#111] z-30 shadow-[0_4px_10px_#111] flex px-2 py-2 text-gray-500 uppercase text-[10px] font-black tracking-widest border-b border-gray-800/50">
             <div className="w-[32px]">#</div>
@@ -271,8 +274,7 @@ export const MoveList: React.FC = () => {
                               e.stopPropagation();
                               const newMove = {...move, move_san: move.best_move_san, move_uci: move.best_move_uci};
                               const idx = moves.findIndex(m => m === move);
-                              const newMoves = [...moves.slice(0, idx), newMove];
-                              branchGame(newMoves, idx);
+                              addVariation(idx, [newMove]);
                             }}
                             className="text-amber-400 font-bold hover:underline"
                           >{move.best_move_san}</button>
@@ -290,16 +292,17 @@ export const MoveList: React.FC = () => {
               };
 
               return (
-                <div key={idx} className={clsx("flex px-2 relative", idx % 2 === 0 ? 'bg-transparent' : 'bg-white/5')}>
-                  <div className="w-[32px] py-1.5 text-gray-600 font-mono text-xs flex items-center">{pair.num}.</div>
+                <React.Fragment key={idx}>
+                  <div className={clsx("flex px-2 relative", idx % 2 === 0 ? 'bg-transparent' : 'bg-white/5')}>
+                    <div className="w-[32px] py-1.5 text-gray-600 font-mono text-xs flex items-center">{pair.num}.</div>
                   
                   {/* White Move */}
                   <div 
                     onClick={() => setCurrentMoveIndex(idx * 2)}
                     className={clsx(
-                      "flex-1 grid grid-cols-[22px_58px_38px] items-center gap-1 py-1.5 px-2 cursor-pointer transition-all border-l-[2px] relative group",
+                      "flex-1 grid grid-cols-[22px_58px_40px] items-center gap-1 py-1.5 px-2 cursor-pointer transition-all border-l-[2px] relative group",
                       currentMoveIndex === idx * 2 
-                        ? "bg-zinc-800/70 border-amber-500 active-move shadow-[inset_0_0_10px_rgba(251,191,36,0.1)]" 
+                        ? "bg-[rgba(251,191,36,0.06)] border-[#fbbf24] active-move" 
                         : "border-transparent hover:bg-zinc-800/30"
                     )}
                   >
@@ -321,10 +324,10 @@ export const MoveList: React.FC = () => {
                   <div 
                     onClick={() => pair.black && setCurrentMoveIndex(idx * 2 + 1)}
                     className={clsx(
-                      "flex-1 grid grid-cols-[22px_58px_38px] items-center gap-1 py-1.5 px-2 transition-all border-l-[2px] relative group",
+                      "flex-1 grid grid-cols-[22px_58px_40px] items-center gap-1 py-1.5 px-2 transition-all border-l-[2px] relative group",
                       pair.black ? "cursor-pointer" : "cursor-default",
                       pair.black && currentMoveIndex === idx * 2 + 1 
-                        ? "bg-zinc-800/70 border-amber-500 active-move shadow-[inset_0_0_10px_rgba(251,191,36,0.1)]" 
+                        ? "bg-[rgba(251,191,36,0.06)] border-[#fbbf24] active-move" 
                         : "border-transparent hover:bg-zinc-800/30"
                     )}
                   >
@@ -346,6 +349,23 @@ export const MoveList: React.FC = () => {
                     )}
                   </div>
                 </div>
+                {(pair.white.variations || (pair.black && pair.black.variations)) && (
+                  <div className="w-full flex flex-col pl-[32px] pr-2 pb-1">
+                    {pair.white.variations?.map((variation, vIdx) => (
+                      <div key={`w-var-${vIdx}`} className="bg-zinc-800/40 border-l-2 border-amber-500/50 pl-2 py-1 mt-0.5 rounded-r flex items-center text-xs">
+                        <span className="text-zinc-500 font-mono mr-2">{pair.num}.</span>
+                        <span className="text-amber-400/90 font-bold">{variation[0].move_san}</span>
+                      </div>
+                    ))}
+                    {pair.black?.variations?.map((variation, vIdx) => (
+                      <div key={`b-var-${vIdx}`} className="bg-zinc-800/40 border-l-2 border-amber-500/50 pl-2 py-1 mt-0.5 rounded-r flex items-center text-xs">
+                        <span className="text-zinc-500 font-mono mr-2">{pair.num}...</span>
+                        <span className="text-amber-400/90 font-bold">{variation[0].move_san}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </React.Fragment>
               );
             })}
           </div>
