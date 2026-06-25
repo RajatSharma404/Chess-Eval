@@ -103,16 +103,35 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ 
     return false;
   };
 
+  const files = boardOrientation === 'white' ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];
+  const ranks = boardOrientation === 'white' ? ['8', '7', '6', '5', '4', '3', '2', '1'] : ['1', '2', '3', '4', '5', '6', '7', '8'];
+
   return (
-    <div className="w-full h-full relative z-10">
-      <Chessboard 
-        position={fen} 
-        boardOrientation={boardOrientation}
-        customSquareStyles={getSquareStyles()}
-        customArrows={customArrows() as any}
-        arePiecesDraggable={true}
-        onPieceDrop={handlePieceDrop}
-      />
+    <div className="w-full h-full flex flex-col relative">
+      <div className="w-full aspect-square relative z-10">
+        {/* Ranks (Left) */}
+        <div className="absolute left-0 top-0 bottom-6 w-6 flex flex-col justify-around text-[11px] font-bold text-zinc-500 text-center pointer-events-none">
+          {ranks.map(r => <div key={r} className="flex-1 flex items-center justify-center">{r}</div>)}
+        </div>
+        
+        {/* Board */}
+        <div className="absolute left-6 right-0 top-0 bottom-6 rounded-md overflow-hidden">
+          <Chessboard 
+            position={fen} 
+            boardOrientation={boardOrientation}
+            customSquareStyles={getSquareStyles()}
+            customArrows={customArrows() as any}
+            arePiecesDraggable={true}
+            onPieceDrop={handlePieceDrop}
+            showBoardNotation={false}
+          />
+        </div>
+
+        {/* Files (Bottom) */}
+        <div className="absolute bottom-0 left-6 right-0 h-6 flex justify-around text-[11px] font-bold text-zinc-500 pointer-events-none">
+          {files.map(f => <div key={f} className="flex-1 flex items-center justify-center">{f}</div>)}
+        </div>
+      </div>
     </div>
   );
 };

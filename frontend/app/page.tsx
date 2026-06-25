@@ -168,7 +168,6 @@ function HomeContent() {
               className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 relative z-10 ${activeTab === 'lichess' ? 'text-white bg-zinc-700 border border-zinc-600 shadow-md' : 'text-zinc-400 hover:text-white hover:bg-zinc-700/50'}`}
             >
               <svg viewBox="0 0 100 100" className={`w-4 h-4 ${activeTab === 'lichess' ? 'fill-white' : 'fill-zinc-400'}`}>
-                <div className="w-4 h-4 rounded-sm flex items-center justify-center bg-current"><div className="w-2 h-2 rotate-45 bg-zinc-800"></div></div>
                 <path d="M 50 15 C 65 15, 65 30, 75 50 C 85 70, 80 85, 80 85 L 20 85 C 20 85, 15 70, 25 50 C 35 30, 35 15, 50 15 Z" />
               </svg>
               Lichess

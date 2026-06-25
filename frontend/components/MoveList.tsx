@@ -3,7 +3,7 @@ import { useGameStore } from '../store/useGameStore';
 import { clsx } from 'clsx';
 
 export const MoveList: React.FC = () => {
-  const { analysisResult, originalAnalysisResult, currentMoveIndex, setPreviewMoveIndex, setCurrentMoveIndex, restoreMainline } = useGameStore();
+  const { analysisResult, originalAnalysisResult, currentMoveIndex, setPreviewMoveIndex, setCurrentMoveIndex, restoreMainline, branchGame } = useGameStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
@@ -116,10 +116,10 @@ export const MoveList: React.FC = () => {
             </clipPath>
           </defs>
           
-          <polygon points={areaPoints} fill="rgba(255,255,255,0.07)" clipPath="url(#above)" />
-          <polygon points={areaPoints} fill="rgba(0,0,0,0.35)" clipPath="url(#below)" />
+          <polygon points={areaPoints} fill="rgba(255,255,255,0.06)" clipPath="url(#above)" />
+          <polygon points={areaPoints} fill="rgba(0,0,0,0.4)" clipPath="url(#below)" />
           
-          <line x1="0" y1="20" x2={width} y2="20" stroke="#52525b" strokeWidth="1" strokeDasharray="4 3" />
+          <line x1="0" y1="20" x2={width} y2="20" stroke="#3f3f46" strokeWidth="1" strokeDasharray="3 3" />
           
           {pointData.map((p, i) => {
             if (i === 0) return null;
@@ -177,14 +177,14 @@ export const MoveList: React.FC = () => {
     <div ref={scrollRef} className="h-full flex flex-col bg-gray-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
       
       <div className="p-4 border-b border-white/10 bg-black/20 shrink-0">
-        <div className="flex flex-wrap gap-2 justify-center mb-4 text-[9px] w-full px-1 py-1">
-          <div className="flex items-center gap-1 shrink-0"><span className="w-2 h-2 bg-cyan-500 rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Brilliant</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-2 h-2 bg-emerald-500 rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Best</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-2 h-2 bg-blue-500 rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Excellent</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-2 h-2 bg-green-500 rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Good</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-2 h-2 bg-yellow-500 rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Inaccuracy</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-2 h-2 bg-orange-500 rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Mistake</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-2 h-2 bg-red-600 rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Blunder</span></div>
+        <div className="flex overflow-x-auto scrollbar-none gap-2 justify-start mb-4 text-[9px] w-full px-1 py-1 whitespace-nowrap">
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#06b6d4] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Brilliant</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#22c55e] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Best</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#86efac] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Excellent</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#4ade80] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Good</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#fbbf24] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Inaccuracy</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#f97316] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Mistake</span></div>
+          <div className="flex items-center gap-1 shrink-0"><span className="w-[10px] h-[10px] bg-[#ef4444] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Blunder</span></div>
         </div>
         {renderSparkline()}
 
@@ -228,7 +228,7 @@ export const MoveList: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 custom-scrollbar relative">
+      <div className="flex-1 overflow-y-auto min-h-0 p-2 custom-scrollbar relative">
         <div className="w-full text-sm text-gray-300 flex flex-col">
           <div className="sticky top-0 bg-[#111] z-30 shadow-[0_4px_10px_#111] flex px-2 py-2 text-gray-500 uppercase text-[10px] font-black tracking-widest border-b border-gray-800/50">
             <div className="w-[32px]">#</div>
@@ -245,8 +245,16 @@ export const MoveList: React.FC = () => {
 
               const renderMovePopover = (move: any) => {
                 const clsName = move.classification.toUpperCase();
+                let msg = "A solid, principled move.";
+                if (move.classification === 'blunder') msg = "This loses significant material or the game.";
+                else if (move.classification === 'mistake') msg = "This severely damages your position.";
+                else if (move.classification === 'inaccuracy') msg = "A sub-optimal plan, allowing counterplay.";
+                else if (move.classification === 'brilliant') msg = "An incredible sacrifice or profound maneuver!";
+                
                 return (
-                  <div className="absolute left-[105%] top-0 z-50 hidden group-hover:block w-48 bg-zinc-900 border border-white/10 shadow-2xl rounded-xl p-3 pointer-events-none animate-in fade-in zoom-in-95 duration-100">
+                  <div className="absolute left-[100%] ml-2 top-0 z-50 hidden group-hover:block w-52 bg-zinc-900 border border-white/10 shadow-2xl rounded-xl p-3 animate-in fade-in zoom-in-95 duration-100 cursor-default">
+                    {/* Invisible bridge to keep hover state active */}
+                    <div className="absolute -left-3 top-0 w-3 h-full bg-transparent"></div>
                     <div className={clsx("text-[10px] font-black tracking-widest mb-2 flex items-center gap-2", getDotColor(move.classification))}>
                       <span className="w-1.5 h-1.5 bg-current rounded-full"></span>
                       ★ {clsName}
@@ -258,11 +266,23 @@ export const MoveList: React.FC = () => {
                       <>
                         <div className="h-px bg-white/5 w-full my-2"></div>
                         <div className="text-xs text-zinc-400 mb-1">
-                          Best was: <span className="text-white font-bold">{move.best_move_san}</span>
+                          Best was: <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newMove = {...move, move_san: move.best_move_san, move_uci: move.best_move_uci};
+                              const idx = moves.findIndex(m => m === move);
+                              const newMoves = [...moves.slice(0, idx), newMove];
+                              branchGame(newMoves, idx);
+                            }}
+                            className="text-amber-400 font-bold hover:underline"
+                          >{move.best_move_san}</button>
                         </div>
                       </>
                     )}
-                    <div className="text-xs text-zinc-500 font-mono">
+                    <div className="text-xs text-zinc-300 italic mb-2 mt-2 leading-tight">
+                      "{msg}"
+                    </div>
+                    <div className="text-[10px] text-zinc-500 font-mono">
                       Δ eval: {move.cp_loss ? (Math.abs(move.cp_loss) > 5000 ? '—' : (move.cp_loss/100).toFixed(1)) : '0.0'}
                     </div>
                   </div>

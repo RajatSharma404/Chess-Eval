@@ -121,6 +121,13 @@ export default function AnalyzePage() {
       if (e.key === 'f' || e.key === 'F') {
         setBoardOrientation(o => o === 'white' ? 'black' : 'white');
       }
+      if (e.key === ' ') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('followBestLine'));
+      }
+      if (e.key === 'Escape') {
+        window.dispatchEvent(new CustomEvent('exitVariation'));
+      }
       
       if (!analysisResult) return;
       if (e.key === 'ArrowRight' && currentMoveIndex < analysisResult.moves.length - 1) {
@@ -273,9 +280,22 @@ export default function AnalyzePage() {
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(600px,1fr)_1fr] xl:grid-cols-[280px_minmax(500px,1fr)_400px] p-6 gap-6 overflow-hidden max-w-[1800px] mx-auto w-full items-start relative">
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-1 xl:grid-cols-[280px_minmax(500px,1fr)_400px] p-0 lg:p-6 gap-0 lg:gap-6 overflow-hidden max-w-[1800px] mx-auto w-full items-start relative h-full">
         {/* Left Column: Sidebar (Drawer on < xl screens) */}
-        <section className={`absolute xl:static top-6 left-6 z-40 w-[280px] xl:w-auto transition-transform duration-300 xl:flex flex-col gap-4 h-full max-h-[calc(100vh-120px)] overflow-y-auto pr-2 custom-scrollbar bg-[#050505]/95 xl:bg-transparent p-4 xl:p-0 rounded-2xl xl:rounded-none shadow-2xl xl:shadow-none border border-white/10 xl:border-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[120%] xl:translate-x-0'}`}>
+        
+        {/* Backdrop */}
+        {isSidebarOpen && (
+           <div 
+             className="xl:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity" 
+             onClick={() => setIsSidebarOpen(false)}
+           />
+        )}
+        
+        <section className={`fixed xl:static z-50 w-full md:w-[400px] xl:w-auto transition-transform duration-300 flex flex-col gap-4 h-full xl:max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar bg-[#050505] xl:bg-transparent p-6 xl:p-0 rounded-t-3xl md:rounded-r-3xl md:rounded-tl-none xl:rounded-none shadow-2xl xl:shadow-none border border-white/10 xl:border-none ${isSidebarOpen ? 'translate-y-0 md:translate-x-0' : 'translate-y-full md:-translate-y-0 md:-translate-x-[120%] xl:translate-x-0'} bottom-0 left-0 md:top-0`}>
+           <div className="flex xl:hidden items-center justify-between mb-2">
+             <h2 className="text-sm font-black text-white uppercase tracking-widest">Match Info</h2>
+             <button onClick={() => setIsSidebarOpen(false)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white"><X size={18} /></button>
+           </div>
            <div className="bg-gray-900/40 backdrop-blur-xl rounded-2xl border border-white/10 p-5 shadow-2xl shrink-0">
               <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <LayoutDashboard size={14} /> Match Info
@@ -317,16 +337,16 @@ export default function AnalyzePage() {
                <div className="flex items-center justify-between bg-white/5 p-2 rounded-lg border border-white/5">
                  <div className="flex items-center gap-2">
                    <div className="w-4 h-4 bg-[#f0f0f0] rounded-sm flex items-center justify-center text-[#111111] font-black text-[8px]">W</div>
-                   <span className="text-zinc-300 font-serif tracking-widest">{renderCaptured(capturedBlackPieces, true)}</span>
+                   <span className="text-zinc-300 font-serif tracking-widest">{renderCaptured(capturedBlackPieces, true) || <span className="text-zinc-600 text-xs font-sans">No captures yet</span>}</span>
                  </div>
-                 {matDiff > 0 && <span className="text-emerald-400 font-black text-xs bg-emerald-400/10 px-1.5 py-0.5 rounded">+{matDiff}</span>}
+                 {matDiff > 0 && <span className="text-amber-500 font-black text-xs bg-amber-500/10 px-1.5 py-0.5 rounded">+{matDiff}</span>}
                </div>
                <div className="flex items-center justify-between bg-white/5 p-2 rounded-lg border border-white/5">
                  <div className="flex items-center gap-2">
                    <div className="w-4 h-4 bg-[#1e1e1e] border border-white rounded-sm flex items-center justify-center text-white font-black text-[8px]">B</div>
-                   <span className="text-zinc-300 font-serif tracking-widest">{renderCaptured(capturedWhitePieces, false)}</span>
+                   <span className="text-zinc-300 font-serif tracking-widest">{renderCaptured(capturedWhitePieces, false) || <span className="text-zinc-600 text-xs font-sans">No captures yet</span>}</span>
                  </div>
-                 {matDiff < 0 && <span className="text-emerald-400 font-black text-xs bg-emerald-400/10 px-1.5 py-0.5 rounded">+{Math.abs(matDiff)}</span>}
+                 {matDiff < 0 && <span className="text-amber-500 font-black text-xs bg-amber-500/10 px-1.5 py-0.5 rounded">+{Math.abs(matDiff)}</span>}
                </div>
              </div>
            </div>
@@ -369,7 +389,8 @@ export default function AnalyzePage() {
         </section>
 
         {/* Center Column: Board & Controls */}
-        <section className="flex flex-col w-full h-[calc(100vh-56px)] justify-center mx-auto xl:max-w-none xl:mx-0 relative max-w-[800px] xl:px-4">
+        <div className="flex flex-col lg:flex-row xl:contents h-full overflow-y-auto xl:overflow-hidden w-full custom-scrollbar">
+          <section className="flex flex-col w-full h-auto lg:h-[calc(100vh-56px)] justify-center mx-auto xl:max-w-none xl:mx-0 relative max-w-[800px] xl:px-4 p-4 lg:p-0 shrink-0">
           
           {/* Hamburger (only below xl) */}
           <button 
@@ -507,7 +528,7 @@ export default function AnalyzePage() {
         </section>
 
         {/* Right Column: Engine & Move Archive */}
-        <section className="w-full flex flex-col h-full max-h-[calc(100vh-120px)] overflow-hidden gap-4 bg-gray-900/20 rounded-2xl border border-white/5 p-2">
+        <section className="w-full flex flex-col h-[500px] lg:h-full lg:max-h-[calc(100vh-120px)] overflow-hidden gap-4 bg-gray-900/20 lg:rounded-2xl border-t lg:border border-white/5 p-2 shrink-0">
           {/* Tabs */}
           <div className="flex items-center text-[10px] sm:text-xs font-bold text-gray-500 border-b border-white/10 shrink-0 px-2 uppercase tracking-widest">
              <button className="flex-1 py-3 hover:text-zinc-100 transition-colors duration-150">Report</button>
@@ -534,6 +555,7 @@ export default function AnalyzePage() {
             </div>
           )}
         </section>
+        </div>
       </main>
 
       {/* Brilliant Move Toast */}

@@ -158,10 +158,10 @@ export function LiveEngine() {
   return (
     <div className="flex-none flex flex-col bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
 
-      <div className="p-4 flex-1 flex flex-col">
+      <div className="p-4 flex-1 flex flex-col min-h-0">
         {/* Engine Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col mb-4">
+          <div className="flex items-center gap-4 mb-2">
             {/* Toggle */}
             <button 
               onClick={() => setEngineOn(!engineOn)}
@@ -169,27 +169,35 @@ export function LiveEngine() {
             >
               <div className={`w-4 h-4 bg-white rounded-full transition-transform shadow ${engineOn ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
-            <span className="text-2xl font-black text-white drop-shadow-md">
+            <span className={`text-[2rem] font-black drop-shadow-md leading-none ${evalCp > 30 ? 'text-white' : evalCp < -30 ? 'text-zinc-400' : 'text-zinc-300'}`}>
               {formatScore(evalCp, isMate)}
             </span>
           </div>
-          <div className="flex items-center gap-4 text-right">
-            <div>
-              <div className="text-amber-400 font-bold text-sm">Depth {depth}</div>
-              <div className="text-emerald-400 text-[10px] font-black tracking-wider uppercase">Stockfish 17 (AVX2)</div>
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-400 font-bold">Depth {depth}</span>
+              <span className="text-zinc-600">•</span>
+              <span className="text-emerald-400 font-black tracking-wider uppercase">Stockfish 17 (AVX2)</span>
             </div>
-            <Settings className="text-gray-400 hover:text-white cursor-pointer transition-colors hover:rotate-90 duration-300" size={20} />
+            <Settings className="text-gray-400 hover:text-white cursor-pointer transition-colors hover:rotate-90 duration-300" size={16} />
           </div>
         </div>
 
         {/* Follow Best Line Button */}
-        <button className="w-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all mb-6 shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:shadow-[0_0_25px_rgba(245,158,11,0.5)] active:scale-[0.98]">
+        <button 
+          onClick={() => {
+            if (engineLines.length > 0) handleLineClick(engineLines[0]);
+          }}
+          title="Press Space"
+          className="w-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all mb-4 shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:shadow-[0_0_25px_rgba(245,158,11,0.5)] active:scale-[0.98] group relative"
+        >
           <FastForward size={18} /> Follow Best Line
+          <span className="absolute right-4 text-[10px] font-bold bg-black/20 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">SPACE</span>
         </button>
 
         {/* Engine Lines */}
-        <div className="space-y-2 relative pb-2">
-          <div className="text-[10px] text-zinc-500 uppercase tracking-wide font-black mb-3">Top Engine Moves</div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar relative pr-2">
+          <div className="text-[10px] text-zinc-500 uppercase tracking-wide font-black mb-3 sticky top-0 bg-[#161a22] z-10 py-1">Top Engine Moves</div>
           {engineLines.length > 0 ? engineLines.map((line, idx) => (
             <div 
               key={idx} 
@@ -202,7 +210,7 @@ export function LiveEngine() {
               <div className="font-black text-white w-8">
                 {line.firstMoveSan}
               </div>
-              <div className="px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm bg-zinc-700 text-zinc-100 min-w-[42px] text-center">
+              <div className="px-2 py-0.5 rounded-full text-[10px] font-black shadow-sm bg-zinc-700 text-white min-w-[42px] text-center">
                 {formatScore(line.displayScore, line.isMate)}
               </div>
               
