@@ -19,6 +19,13 @@ function HomeContent() {
 
   useEffect(() => {
     try {
+      const savedUser = localStorage.getItem('mastermind_saved_username');
+      const savedPlatform = localStorage.getItem('mastermind_saved_platform');
+      if (savedUser) setUsername(savedUser);
+      if (savedPlatform === 'chesscom' || savedPlatform === 'lichess') {
+        setActiveTab(savedPlatform as 'chesscom' | 'lichess');
+      }
+
       const stored = localStorage.getItem('mastermind_streak_days');
       if (stored) {
         const lastDate = localStorage.getItem('mastermind_last_analysis_date');
@@ -78,8 +85,12 @@ function HomeContent() {
     if (activeTab === 'pgn' && gameUrl) {
       handleAnalyzeGame(gameUrl);
     } else if (activeTab === 'chesscom' && username) {
+      localStorage.setItem('mastermind_saved_username', username);
+      localStorage.setItem('mastermind_saved_platform', 'chesscom');
       router.push(`/history?user=${username}&platform=chesscom`);
     } else if (activeTab === 'lichess' && username) {
+      localStorage.setItem('mastermind_saved_username', username);
+      localStorage.setItem('mastermind_saved_platform', 'lichess');
       router.push(`/history?user=${username}&platform=lichess`);
     }
   };
@@ -134,12 +145,12 @@ function HomeContent() {
           </div>
 
           <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-[0.05em] text-white leading-none">
-            MASTER<br />
+            CHESS<br />
             <span 
               className="text-teal-400 inline-block" 
               style={{ textShadow: '0 0 40px rgba(20,184,166,0.4)' }}
             >
-              MIND
+              IGMA
             </span>
           </h1>
           <p className="text-gray-400 text-base sm:text-lg font-medium max-w-xl mx-auto leading-relaxed">
@@ -368,7 +379,7 @@ function HomeContent() {
       {/* Footer */}
       <footer className="mt-12 pt-6 pb-6 w-full max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-zinc-500 text-sm z-10 relative">
         <div className="flex items-center gap-2">
-          © 2026 MasterMind <span className="hidden md:inline">·</span>
+          © 2026 Chessigma <span className="hidden md:inline">·</span>
           <span className="opacity-70 text-xs">Powered by Stockfish 17 & Gemini 2.0</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-6">

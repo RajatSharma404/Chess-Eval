@@ -5,7 +5,7 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'MasterMind | Chess Game Evaluator',
+  title: 'Chessigma | Chess Game Evaluator',
   description: 'AI-powered chess game analysis with Stockfish 17',
 };
 
