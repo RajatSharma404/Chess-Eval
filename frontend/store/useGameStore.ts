@@ -45,6 +45,9 @@ export interface AnalysisProgress {
   isComplete?: boolean;
 }
 
+export type BoardTheme = 'emerald' | 'wood' | 'cyber' | 'slate';
+export type CoachPersona = 'magnus' | 'anna' | 'tal' | 'capablanca';
+
 interface GameState {
   gameUrl: string;
   analysisResult: AnalysisResult | null;
@@ -54,6 +57,14 @@ interface GameState {
   isLoading: boolean;
   error: string | null;
   progressStatus: AnalysisProgress | null;
+  
+  // Customization & Media
+  soundEnabled: boolean;
+  boardTheme: BoardTheme;
+  isPlaying: boolean;
+  playbackSpeed: number;
+  coachPersona: CoachPersona;
+
   setGameUrl: (url: string) => void;
   setAnalysisResult: (result: AnalysisResult) => void;
   setCurrentMoveIndex: (index: number) => void;
@@ -65,6 +76,12 @@ interface GameState {
   branchGame: (newMoves: Move[], newIndex: number) => void;
   addVariation: (moveIndex: number, variation: Move[]) => void;
   restoreMainline: () => void;
+  
+  toggleSound: () => void;
+  setBoardTheme: (theme: BoardTheme) => void;
+  setIsPlaying: (playing: boolean) => void;
+  setPlaybackSpeed: (speed: number) => void;
+  setCoachPersona: (persona: CoachPersona) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -76,6 +93,13 @@ export const useGameStore = create<GameState>((set) => ({
   isLoading: false,
   progressStatus: null,
   error: null,
+  
+  soundEnabled: true,
+  boardTheme: 'emerald',
+  isPlaying: false,
+  playbackSpeed: 1,
+  coachPersona: 'magnus',
+
   setGameUrl: (url) => set({ gameUrl: url }),
   setAnalysisResult: (result) => set({ analysisResult: result, originalAnalysisResult: result, currentMoveIndex: -1, previewMoveIndex: null }),
   setCurrentMoveIndex: (index) => set({ currentMoveIndex: index, previewMoveIndex: null }),
@@ -112,5 +136,11 @@ export const useGameStore = create<GameState>((set) => ({
   restoreMainline: () => set((state) => ({
     analysisResult: state.originalAnalysisResult,
     currentMoveIndex: state.originalAnalysisResult ? state.originalAnalysisResult.moves.length - 1 : -1
-  }))
+  })),
+
+  toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
+  setBoardTheme: (theme) => set({ boardTheme: theme }),
+  setIsPlaying: (playing) => set({ isPlaying: playing }),
+  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+  setCoachPersona: (persona) => set({ coachPersona: persona })
 }));
