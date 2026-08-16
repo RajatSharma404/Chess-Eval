@@ -245,9 +245,9 @@ export default function AnalyzePage() {
         </div>
 
         {/* RIGHT COLUMN: 5-TAB WORKSPACE CONTROL CENTER */}
-        <div className="w-full lg:w-[460px] bg-[#121214] border-l border-white/10 flex flex-col shadow-2xl shrink-0 z-10 overflow-hidden">
+        <div className="w-full lg:w-[460px] h-full bg-[#121214] border-l border-white/10 flex flex-col shadow-2xl shrink-0 z-10 overflow-hidden min-h-0">
           {/* Tab Navigation Header */}
-          <div className="flex items-center text-xs font-bold text-zinc-400 border-b border-white/10 bg-zinc-950/60 p-1 gap-1">
+          <div className="flex items-center text-xs font-bold text-zinc-400 border-b border-white/10 bg-zinc-950/60 p-1 gap-1 shrink-0">
              <button 
                onClick={() => setActiveTab('analysis')}
                className={`flex-1 py-2.5 flex justify-center items-center gap-1.5 rounded-lg transition-all ${
@@ -306,10 +306,10 @@ export default function AnalyzePage() {
           
           {/* Tab Body */}
           <div className="flex-1 overflow-hidden relative bg-[#121214] flex flex-col min-h-0">
-            {activeTab === 'analysis' && <AnalysisTab />}
+            {activeTab === 'analysis' && <div className="h-full overflow-y-auto custom-scrollbar min-h-0"><AnalysisTab /></div>}
             {activeTab === 'moves' && <MoveList />}
             {activeTab === 'engine' && <LiveEngine />}
-            {activeTab === 'report' && <ReportTab />}
+            {activeTab === 'report' && <div className="h-full overflow-y-auto custom-scrollbar min-h-0"><ReportTab /></div>}
             {activeTab === 'coach' && <CoachChat />}
           </div>
         </div>

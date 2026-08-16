@@ -16,12 +16,12 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} antialiased bg-[#09090b] text-gray-100 min-h-screen flex flex-col`}>
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} antialiased bg-[#09090b] text-gray-100 h-full flex flex-col overflow-hidden`}>
         <Navbar />
-        <div className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto relative">
           {children}
-        </div>
+        </main>
       </body>
     </html>
   );

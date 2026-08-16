@@ -6,50 +6,73 @@ export class StockfishEngine {
 
   public analyzePosition(fen: string, depth: number = 15, signal?: AbortSignal): Promise<any> {
     return new Promise((resolve, reject) => {
+      let isSettled = false;
       let bestMove: string | null = null;
       let evalCp: number | null = null;
-      
+
       if (signal?.aborted) {
         return reject(new DOMException('Analysis cancelled', 'AbortError'));
       }
 
-      this.abortController = new AbortController();
+      const internalController = new AbortController();
+      this.abortController = internalController;
 
-      const onAbort = () => {
-        this.abortController?.abort();
-        reject(new DOMException('Analysis cancelled', 'AbortError'));
+      const finish = (result: { bestMove: string | null; evalCp: number }) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timeoutId);
+        try { internalController.abort(); } catch (e) {}
+        resolve(result);
+      };
+
+      const fail = (err: any) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timeoutId);
+        try { internalController.abort(); } catch (e) {}
+        reject(err);
+      };
+
+      const onExternalAbort = () => {
+        fail(new DOMException('Analysis cancelled', 'AbortError'));
       };
 
       if (signal) {
-        signal.addEventListener('abort', onAbort, { once: true });
+        signal.addEventListener('abort', onExternalAbort, { once: true });
       }
-      
+
+      const timeoutId = setTimeout(() => {
+        finish({ bestMove, evalCp: evalCp || 0 });
+      }, 12000);
+
       fetch(`/api/engine?fen=${encodeURIComponent(fen)}&depth=${depth}&mode=single`, {
-        signal: this.abortController.signal
+        signal: internalController.signal
       }).then(async (response) => {
-        if (!response.body) return resolve({ bestMove, evalCp: 0 });
-        
+        if (!response.body) {
+          return finish({ bestMove, evalCp: 0 });
+        }
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-        
+
         while (true) {
           if (signal?.aborted) {
-            reader.cancel();
-            return reject(new DOMException('Analysis cancelled', 'AbortError'));
+            try { reader.cancel(); } catch (e) {}
+            return fail(new DOMException('Analysis cancelled', 'AbortError'));
           }
 
           const { done, value } = await reader.read();
           if (done) break;
-          
+
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
-          
+
           for (const rawLine of lines) {
             if (!rawLine.startsWith('data: ')) continue;
             const line = rawLine.replace('data: ', '').trim();
-            
+
             if (line.startsWith('info depth')) {
               const pvMatch = line.match(/\bpv\s+([a-h1-8]{4,5})/);
               const cpMatch = line.match(/cp\s+(-?\d+)/);
@@ -68,25 +91,20 @@ export class StockfishEngine {
                 }
               }
             } else if (line.startsWith('bestmove')) {
-              resolve({ bestMove, evalCp: evalCp || 0 });
-              this.abortController?.abort();
-              return;
+              try { reader.cancel(); } catch (e) {}
+              return finish({ bestMove, evalCp: evalCp || 0 });
             }
           }
         }
-        resolve({ bestMove, evalCp: evalCp || 0 });
+
+        finish({ bestMove, evalCp: evalCp || 0 });
       }).catch((e) => {
-        if (signal?.aborted || e?.name === 'AbortError') {
-          reject(new DOMException('Analysis cancelled', 'AbortError'));
+        if (signal?.aborted) {
+          fail(new DOMException('Analysis cancelled', 'AbortError'));
         } else {
-          resolve({ bestMove, evalCp: 0 });
+          finish({ bestMove, evalCp: evalCp || 0 });
         }
       });
-      
-      setTimeout(() => {
-        this.abortController?.abort();
-        resolve({ bestMove, evalCp: evalCp || 0 });
-      }, 10000);
     });
   }
 
