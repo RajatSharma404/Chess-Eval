@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 
 export const runtime = 'nodejs';
 
@@ -13,11 +14,17 @@ export async function GET(req: NextRequest) {
     return new Response('Missing fen', { status: 400 });
   }
 
+  // Robust path resolution for Windows & server environments
+  const candidatePaths = [
+    path.join(process.cwd(), 'stockfish17', 'stockfish', 'stockfish-windows-x86-64-avx2.exe'),
+    path.join(process.cwd(), 'frontend', 'stockfish17', 'stockfish', 'stockfish-windows-x86-64-avx2.exe'),
+    path.join(process.cwd(), '..', 'frontend', 'stockfish17', 'stockfish', 'stockfish-windows-x86-64-avx2.exe'),
+  ];
+
+  const exePath = candidatePaths.find(p => fs.existsSync(p)) || candidatePaths[0];
+
   const stream = new ReadableStream({
     start(controller) {
-      const exePath = path.join(process.cwd(), 'stockfish17', 'stockfish', 'stockfish-windows-x86-64-avx2.exe');
-      const sf = spawn(exePath);
-      
       let isClosed = false;
       const safeClose = () => {
         if (!isClosed) {
@@ -25,6 +32,16 @@ export async function GET(req: NextRequest) {
           try { controller.close(); } catch (e) {}
         }
       };
+
+      let sf: any = null;
+      try {
+        sf = spawn(exePath);
+      } catch (err) {
+        console.error('Failed to spawn Stockfish:', err);
+        controller.enqueue(`data: bestmove (none)\n\n`);
+        safeClose();
+        return;
+      }
 
       const onData = (data: Buffer) => {
         if (isClosed) return;
@@ -45,7 +62,7 @@ export async function GET(req: NextRequest) {
       sf.stdout.on('data', onData);
       
       sf.on('close', () => { safeClose(); });
-      sf.on('error', (err) => {
+      sf.on('error', (err: any) => {
         console.error('Stockfish spawn error:', err);
         safeClose();
       });

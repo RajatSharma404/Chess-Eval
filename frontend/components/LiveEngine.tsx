@@ -131,17 +131,17 @@ export function LiveEngine() {
 
   const handleLineClick = (line: any) => {
     if (!analysisResult || !line.pvMoves || line.pvMoves.length === 0) return;
-    const baseMoves = analysisResult.moves.slice(0, currentMoveIndex + 1);
-    const newMoves = [...baseMoves];
-    
-    const currentFen = baseMoves.length > 0 ? baseMoves[baseMoves.length - 1].fen_after : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const parentIndex = Math.max(0, currentMoveIndex);
+    const parentMove = analysisResult.moves[parentIndex];
+    const currentFen = parentMove ? parentMove.fen_after : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     const startChess = new Chess(currentFen);
     const isWhiteTurn = startChess.turn() === 'w';
 
+    const variationMoves: any[] = [];
     line.pvMoves.forEach((m: any, i: number) => {
       const moveColor = isWhiteTurn ? (i % 2 === 0 ? 'white' : 'black') : (i % 2 === 0 ? 'black' : 'white');
-      const moveNum = Math.floor((baseMoves.length + i) / 2) + 1;
-      newMoves.push({
+      const moveNum = Math.floor((parentIndex + 1 + i) / 2) + 1;
+      variationMoves.push({
         move_number: moveNum,
         color: moveColor,
         move_san: m.move_san,
@@ -156,8 +156,8 @@ export function LiveEngine() {
         best_move_uci: ''
       });
     });
-    
-    useGameStore.getState().branchGame(newMoves, baseMoves.length);
+
+    useGameStore.getState().addVariation(parentIndex, variationMoves);
   };
 
   return (
