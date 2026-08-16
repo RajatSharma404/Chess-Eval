@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
+import { Chess } from 'chess.js';
 import { clsx } from 'clsx';
 
 export const MoveList: React.FC = () => {
@@ -268,16 +269,36 @@ export const MoveList: React.FC = () => {
                     {move.best_move_san && move.best_move_san !== move.move_san && (
                       <>
                         <div className="h-px bg-white/5 w-full my-2"></div>
-                        <div className="text-xs text-zinc-400 mb-1">
-                          Best was: <button 
+                        <div className="text-xs text-zinc-400 mb-1 flex items-center justify-between">
+                          <span>Best was:</span>
+                          <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              const newMove = {...move, move_san: move.best_move_san, move_uci: move.best_move_uci};
-                              const idx = moves.findIndex(m => m === move);
-                              addVariation(idx, [newMove]);
+                              const testChess = new Chess(move.fen_before);
+                              try {
+                                const from = move.best_move_uci.slice(0, 2);
+                                const to = move.best_move_uci.slice(2, 4);
+                                const promotion = move.best_move_uci.length > 4 ? move.best_move_uci[4] : undefined;
+                                const moveObj = testChess.move({ from, to, promotion });
+                                if (moveObj) {
+                                  const newMove = {
+                                    ...move,
+                                    move_san: moveObj.san,
+                                    move_uci: move.best_move_uci,
+                                    fen_after: testChess.fen(),
+                                    classification: 'best'
+                                  };
+                                  const moveIdx = moves.findIndex(m => m === move);
+                                  addVariation(moveIdx, [newMove]);
+                                  const baseMoves = moves.slice(0, moveIdx);
+                                  branchGame([...baseMoves, newMove], baseMoves.length);
+                                }
+                              } catch (err) {}
                             }}
-                            className="text-amber-400 font-bold hover:underline"
-                          >{move.best_move_san}</button>
+                            className="text-amber-400 font-bold hover:underline px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/20"
+                          >
+                            {move.best_move_san} →
+                          </button>
                         </div>
                       </>
                     )}
@@ -350,17 +371,39 @@ export const MoveList: React.FC = () => {
                   </div>
                 </div>
                 {(pair.white.variations || (pair.black && pair.black.variations)) && (
-                  <div className="w-full flex flex-col pl-[32px] pr-2 pb-1">
+                  <div className="w-full flex flex-col pl-[32px] pr-2 pb-1 space-y-0.5">
                     {pair.white.variations?.map((variation, vIdx) => (
-                      <div key={`w-var-${vIdx}`} className="bg-zinc-800/40 border-l-2 border-amber-500/50 pl-2 py-1 mt-0.5 rounded-r flex items-center text-xs">
-                        <span className="text-zinc-500 font-mono mr-2">{pair.num}.</span>
-                        <span className="text-amber-400/90 font-bold">{variation[0].move_san}</span>
+                      <div 
+                        key={`w-var-${vIdx}`} 
+                        onClick={() => {
+                          const baseMoves = moves.slice(0, idx * 2);
+                          const newMoves = [...baseMoves, ...variation];
+                          branchGame(newMoves, baseMoves.length);
+                        }}
+                        className="bg-zinc-800/40 hover:bg-amber-500/10 cursor-pointer border-l-2 border-amber-500/50 pl-2 py-1 rounded-r flex items-center justify-between text-xs transition-colors group"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-zinc-500 font-mono">{pair.num}.</span>
+                          <span className="text-amber-400 font-bold">{variation[0].move_san}</span>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 font-mono group-hover:text-amber-400">Inspect Line →</span>
                       </div>
                     ))}
                     {pair.black?.variations?.map((variation, vIdx) => (
-                      <div key={`b-var-${vIdx}`} className="bg-zinc-800/40 border-l-2 border-amber-500/50 pl-2 py-1 mt-0.5 rounded-r flex items-center text-xs">
-                        <span className="text-zinc-500 font-mono mr-2">{pair.num}...</span>
-                        <span className="text-amber-400/90 font-bold">{variation[0].move_san}</span>
+                      <div 
+                        key={`b-var-${vIdx}`} 
+                        onClick={() => {
+                          const baseMoves = moves.slice(0, idx * 2 + 1);
+                          const newMoves = [...baseMoves, ...variation];
+                          branchGame(newMoves, baseMoves.length);
+                        }}
+                        className="bg-zinc-800/40 hover:bg-amber-500/10 cursor-pointer border-l-2 border-amber-500/50 pl-2 py-1 rounded-r flex items-center justify-between text-xs transition-colors group"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-zinc-500 font-mono">{pair.num}...</span>
+                          <span className="text-amber-400 font-bold">{variation[0].move_san}</span>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 font-mono group-hover:text-amber-400">Inspect Line →</span>
                       </div>
                     ))}
                   </div>

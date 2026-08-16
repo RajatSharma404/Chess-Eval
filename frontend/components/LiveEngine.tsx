@@ -130,26 +130,31 @@ export function LiveEngine() {
   };
 
   const handleLineClick = (line: any) => {
-    if (!analysisResult) return;
+    if (!analysisResult || !line.pvMoves || line.pvMoves.length === 0) return;
     const baseMoves = analysisResult.moves.slice(0, currentMoveIndex + 1);
     const newMoves = [...baseMoves];
     
-    // Convert pvMoves to the Move interface format roughly
+    const currentFen = baseMoves.length > 0 ? baseMoves[baseMoves.length - 1].fen_after : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const startChess = new Chess(currentFen);
+    const isWhiteTurn = startChess.turn() === 'w';
+
     line.pvMoves.forEach((m: any, i: number) => {
+      const moveColor = isWhiteTurn ? (i % 2 === 0 ? 'white' : 'black') : (i % 2 === 0 ? 'black' : 'white');
+      const moveNum = Math.floor((baseMoves.length + i) / 2) + 1;
       newMoves.push({
-        move_number: 0,
-        color: i % 2 === 0 ? 'white' : 'black',
+        move_number: moveNum,
+        color: moveColor,
         move_san: m.move_san,
         move_uci: m.move_uci,
-        fen_before: '',
+        fen_before: i === 0 ? currentFen : line.pvMoves[i - 1].fen_after,
         fen_after: m.fen_after,
         eval_before_cp: 0,
         eval_after_cp: line.displayScore * 100,
         cp_loss: 0,
-        classification: 'book',
+        classification: 'best',
         best_move_san: '',
         best_move_uci: ''
-      } as any);
+      });
     });
     
     useGameStore.getState().branchGame(newMoves, baseMoves.length);

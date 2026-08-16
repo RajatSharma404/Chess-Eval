@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { AnalysisGraph } from './AnalysisGraph';
+import { getCurrentOpening } from '../../lib/openings';
+import { BlunderTrainerModal } from './BlunderTrainerModal';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -11,7 +13,8 @@ import {
   Target, 
   AlertTriangle, 
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  BookOpen
 } from 'lucide-react';
 
 export const AnalysisTab: React.FC = () => {
@@ -25,6 +28,8 @@ export const AnalysisTab: React.FC = () => {
     setPlaybackSpeed,
     restoreMainline
   } = useGameStore();
+
+  const [isTrainerOpen, setIsTrainerOpen] = useState(false);
 
   useEffect(() => {
     if (!isPlaying || !analysisResult) return;
@@ -49,6 +54,12 @@ export const AnalysisTab: React.FC = () => {
   const evalScore = currentMove?.eval_after_cp || 0;
   const displayScore = evalScore > 0 ? `+${(evalScore / 100).toFixed(1)}` : (evalScore / 100).toFixed(1);
 
+  // Dynamic Opening move-by-move
+  const currentOpening = getCurrentOpening(analysisResult.moves || [], currentMoveIndex);
+  const openingDisplay = currentOpening.name !== 'Starting Position'
+    ? `${currentOpening.eco !== '?' ? currentOpening.eco + ' · ' : ''}${currentOpening.name}`
+    : (analysisResult.opening || 'Chess Match Analysis');
+
   // Get key moments counts
   const blunders = analysisResult.moves.filter(m => m.classification === 'blunder');
   const mistakes = analysisResult.moves.filter(m => m.classification === 'mistake');
@@ -68,26 +79,33 @@ export const AnalysisTab: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col w-full h-full text-white bg-[#18181b] p-4 font-sans overflow-y-auto">
-      {/* Top Coach Banner */}
-      <div className="bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-zinc-900 border border-emerald-500/20 rounded-2xl p-4 flex gap-4 items-center mb-4 relative shadow-lg">
-        <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xl shrink-0">
-          ♟
+    <div className="flex flex-col w-full h-full text-white bg-[#121214] p-4 font-sans overflow-y-auto space-y-4">
+      {/* Blunder Trainer Modal */}
+      <BlunderTrainerModal
+        isOpen={isTrainerOpen}
+        onClose={() => setIsTrainerOpen(false)}
+        analysisResult={analysisResult}
+      />
+
+      {/* Top Opening & Match Banner */}
+      <div className="bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-zinc-900 border border-emerald-500/20 rounded-2xl p-4 flex gap-3.5 items-center shadow-lg">
+        <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-lg shrink-0">
+          <BookOpen size={20} />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="font-extrabold text-sm text-white">{analysisResult.opening || 'Chess Match Analysis'}</span>
+            <span className="font-extrabold text-xs sm:text-sm text-white truncate">{openingDisplay}</span>
           </div>
-          <p className="text-xs text-zinc-400">
+          <p className="text-[11px] text-zinc-400 truncate">
             {analysisResult.white_player} ({analysisResult.white_elo || '1500'}) vs {analysisResult.black_player} ({analysisResult.black_elo || '1500'})
           </p>
         </div>
         <button
           onClick={restoreMainline}
           title="Restore Mainline Game"
-          className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors border border-white/10"
+          className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors border border-white/10 shrink-0"
         >
-          <RotateCcw size={16} />
+          <RotateCcw size={15} />
         </button>
       </div>
 

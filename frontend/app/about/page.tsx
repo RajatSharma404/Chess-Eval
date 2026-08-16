@@ -26,7 +26,7 @@ export default function AboutPage() {
           <div className="h-6 w-[1px] bg-white/10" />
           <div className="flex items-center gap-3">
             <span className="text-2xl grayscale opacity-80 text-teal-400 drop-shadow-[0_0_8px_rgba(20,184,166,0.5)]">♟</span>
-            <span className="text-sm font-black tracking-widest text-white mt-1">CHESSIGMA</span>
+            <span className="text-sm font-black tracking-widest text-white mt-1">CHESSEVAL</span>
           </div>
         </div>
         <Link href="/" className="text-sm font-bold text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-2">
@@ -40,7 +40,7 @@ export default function AboutPage() {
           
           <div className="text-center mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <h1 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tight">
-              About <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-500 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">Chessigma</span>
+              About <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-500 drop-shadow-[0_0_20px_rgba(20,184,166,0.4)]">ChessEval</span>
             </h1>
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
               We are revolutionizing chess analysis by combining the raw power of Stockfish 17 with the natural language intelligence of Google Gemini 2.0.
@@ -85,12 +85,12 @@ export default function AboutPage() {
               <a href="https://github.com/RajatSharma404/Chess-Eval" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors font-medium">
                 <Github size={20} /> GitHub
               </a>
-              <a href="mailto:support@chessigma.com" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors font-medium">
+              <a href="mailto:support@chesseval.com" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors font-medium">
                 <Mail size={20} /> Contact Support
               </a>
             </div>
             <div className="text-zinc-500 text-sm">
-              © 2026 Chessigma. All rights reserved.
+              © 2026 ChessEval. All rights reserved.
             </div>
           </div>
 

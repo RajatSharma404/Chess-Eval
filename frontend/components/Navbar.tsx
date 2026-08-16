@@ -51,7 +51,7 @@ export const Navbar: React.FC = () => {
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="text-base font-black tracking-widest text-white">CHESSIGMA</span>
+              <span className="text-base font-black tracking-widest text-white">CHESSEVAL</span>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             <span className="text-[10px] text-emerald-400/80 font-mono tracking-wider">AI EVAL & ENGINE</span>

@@ -6,7 +6,7 @@ import { Navbar } from '../components/Navbar';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'Chessigma | Advanced AI Chess Evaluation & Training',
+  title: 'ChessEval | Advanced AI Chess Evaluation & Training',
   description: 'Professional chess analysis powered by Stockfish 17 (WASM) and Google Gemini 2.0 AI',
 };
 

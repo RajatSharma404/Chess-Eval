@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { useGameStore } from '../store/useGameStore';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { useGameStore, CoachPersona } from '../store/useGameStore';
+import { Send, Bot, User, Loader2, Sparkles, Trophy, Swords, ShieldAlert } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'model';
@@ -9,13 +9,17 @@ interface Message {
 }
 
 export const CoachChat: React.FC = () => {
-  const { gameUrl } = useGameStore();
+  const { gameUrl, coachPersona, setCoachPersona, analysisResult, currentMoveIndex } = useGameStore();
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', content: "Hello! I'm Supercoach. I've analyzed your game. What would you like to know about it?" }
+    { role: 'model', content: "Hello! I'm your AI Coach. I've analyzed your game. What would you like to explore about this position or game?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const currentMove = currentMoveIndex >= 0 && analysisResult && currentMoveIndex < analysisResult.moves.length 
+    ? analysisResult.moves[currentMoveIndex] 
+    : null;
 
   const scrollToBottom = () => {
     if (messagesEndRef.current && messagesEndRef.current.parentElement) {
@@ -37,14 +41,16 @@ export const CoachChat: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Send history excluding the initial greeting to keep token count lower if desired,
-      // but let's just send the whole history.
       const historyToSend = messages.slice(1).map(m => ({ role: m.role, content: m.content }));
+      const contextPrompt = currentMove 
+        ? `[Position: Move ${currentMove.move_number} · Played: ${currentMove.move_san} · Best was: ${currentMove.best_move_san} · FEN: ${currentMove.fen_after}]\n${userMessage}`
+        : userMessage;
       
       const res = await axios.post('/api/coach', {
-        message: userMessage,
+        message: contextPrompt,
         pgn: gameUrl,
-        history: historyToSend
+        history: historyToSend,
+        persona: coachPersona
       });
 
       setMessages(prev => [...prev, { role: 'model', content: res.data.response }]);
@@ -57,10 +63,31 @@ export const CoachChat: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a] rounded-xl border border-white/5 shadow-inner overflow-hidden">
-      <div className="bg-emerald-900/20 border-b border-emerald-500/20 p-3 flex items-center gap-2">
-        <Bot size={18} className="text-emerald-400" />
-        <span className="font-bold text-xs uppercase tracking-widest text-emerald-400">Supercoach AI</span>
+    <div className="flex flex-col h-full bg-[#121214] rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+      <div className="bg-zinc-950/70 border-b border-white/10 p-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Bot size={18} className="text-emerald-400" />
+          <span className="font-extrabold text-xs uppercase tracking-wider text-emerald-400 capitalize">
+            {coachPersona} AI Coach
+          </span>
+        </div>
+
+        {/* Persona Pill Selector */}
+        <div className="flex gap-1 bg-white/5 p-0.5 rounded-lg border border-white/10">
+          {(['magnus', 'anna', 'tal', 'capablanca'] as CoachPersona[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setCoachPersona(p)}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold capitalize transition-all ${
+                coachPersona === p
+                  ? 'bg-emerald-500 text-black shadow'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">

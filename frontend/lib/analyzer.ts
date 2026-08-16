@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js';
 import { StockfishEngine } from './engine';
-import { AnalysisProgress } from '../store/useGameStore';
+import { AnalysisProgress, Move } from '../store/useGameStore';
+import { getGameOpening } from './openings';
 
 function winProb(cp: number): number {
   const capped = Math.max(-10000, Math.min(10000, cp));
@@ -10,18 +11,29 @@ function winProb(cp: number): number {
 function calculateAccuracy(avgWinProbLoss: number): number {
   if (avgWinProbLoss <= 0) return 100.0;
   const accuracy = 103.1668 * Math.exp(-0.04354 * avgWinProbLoss) - 3.1669;
-  return Math.max(0, Math.min(100, accuracy));
+  return Math.max(0, Math.min(100, Math.round(accuracy * 10) / 10));
 }
 
 function classifyMove(cpLoss: number, isBest: boolean, isCapture: boolean): string {
-  if (isBest) {
-    if (isCapture && cpLoss === 0) return 'best';
-    return 'best';
-  }
-  if (cpLoss < 50) return 'good';
-  if (cpLoss < 100) return 'inaccuracy';
-  if (cpLoss < 300) return 'mistake';
+  if (isBest || cpLoss <= 10) return 'best';
+  if (cpLoss <= 40) return 'good';
+  if (cpLoss <= 90) return 'inaccuracy';
+  if (cpLoss <= 250) return 'mistake';
   return 'blunder';
+}
+
+function uciToSan(fen: string, uci: string | null): string {
+  if (!uci || uci.length < 4) return '';
+  try {
+    const tempChess = new Chess(fen);
+    const from = uci.slice(0, 2);
+    const to = uci.slice(2, 4);
+    const promotion = uci.length > 4 ? uci[4] : undefined;
+    const moveObj = tempChess.move({ from, to, promotion });
+    return moveObj ? moveObj.san : uci;
+  } catch (e) {
+    return uci;
+  }
 }
 
 export async function analyzeGameLocal(pgn: string, onProgress: (progress: AnalysisProgress | string) => void): Promise<any> {
@@ -33,7 +45,7 @@ export async function analyzeGameLocal(pgn: string, onProgress: (progress: Analy
   const blackPlayer = headers['Black'] || 'Black Player';
   const whiteElo = headers['WhiteElo'] || '1500';
   const blackElo = headers['BlackElo'] || '1500';
-  const openingName = headers['Opening'] || headers['ECO'] || "Custom Opening";
+  let openingName = headers['Opening'] || headers['ECO'] || '';
   
   const history = chess.history({ verbose: true });
   const totalMoves = history.length;
@@ -41,11 +53,15 @@ export async function analyzeGameLocal(pgn: string, onProgress: (progress: Analy
   const engine = new StockfishEngine();
   const testChess = new Chess();
   
-  const movesAnalysis = [];
-  const whiteCpl: number[] = [];
-  const blackCpl: number[] = [];
+  const movesAnalysis: Move[] = [];
+  const whiteWpLosses: number[] = [];
+  const blackWpLosses: number[] = [];
   
-  onProgress({ status: "Initializing WebAssembly Engine..." });
+  onProgress({ status: "Initializing Chess Engine..." });
+  
+  // Single-pass evaluation: evaluate initial position once
+  let currentFen = testChess.fen();
+  let currentEngineInfo = await engine.analyzePosition(currentFen, 12);
   
   for (let i = 0; i < totalMoves; i++) {
     const currentLine = history.slice(Math.max(0, i - 4), i + 1).map(m => m.san).join(' ');
@@ -56,66 +72,83 @@ export async function analyzeGameLocal(pgn: string, onProgress: (progress: Analy
       currentLine: `...${currentLine}`
     });
     
-    const fenBefore = testChess.fen();
+    const fenBefore = currentFen;
     const move = history[i];
+    const isWhiteTurn = i % 2 === 0;
     
-    // Evaluate before move
-    const infoBefore = await engine.analyzePosition(fenBefore, 12);
-    const evalBeforeCp = infoBefore.evalCp || 0;
-    const bestMoveUci = infoBefore.bestMove;
+    const infoBefore = currentEngineInfo;
+    const evalBeforeSide = infoBefore?.evalCp ?? 0;
+    const bestMoveUci = infoBefore?.bestMove || '';
+    const bestMoveSan = uciToSan(fenBefore, bestMoveUci);
     
+    // Play move
     testChess.move(move);
     const fenAfter = testChess.fen();
     
-    // Evaluate after move
-    let evalAfterCp = 0;
+    let evalAfterSide = 0;
+    let evalAfterWhite = 0;
+    
     if (testChess.isGameOver()) {
       if (testChess.isCheckmate()) {
-        evalAfterCp = (i % 2 === 0) ? 10000 : -10000;
+        // Player who just moved delivered checkmate
+        evalAfterSide = 10000;
+        evalAfterWhite = isWhiteTurn ? 10000 : -10000;
+        currentEngineInfo = { bestMove: null, evalCp: -10000 };
       } else {
-        evalAfterCp = 0;
+        // Stalemate or draw
+        evalAfterSide = 0;
+        evalAfterWhite = 0;
+        currentEngineInfo = { bestMove: null, evalCp: 0 };
       }
     } else {
-      const infoAfter = await engine.analyzePosition(fenAfter, 12);
-      evalAfterCp = infoAfter.evalCp || 0;
+      currentEngineInfo = await engine.analyzePosition(fenAfter, 12);
+      // In fenAfter, it is the opponent's turn.
+      // So currentEngineInfo.evalCp is the OPPONENT'S evaluation.
+      // Therefore, the evaluation for the player who just moved is -currentEngineInfo.evalCp.
+      const oppEval = currentEngineInfo?.evalCp ?? 0;
+      evalAfterSide = -oppEval;
+      evalAfterWhite = isWhiteTurn ? -oppEval : oppEval;
     }
     
-    const evalBeforeRel = i % 2 === 0 ? evalBeforeCp : -evalBeforeCp;
-    const evalAfterRel = i % 2 === 0 ? -evalAfterCp : evalAfterCp;
+    currentFen = fenAfter;
     
-    let cpLoss = Math.max(0, evalBeforeRel - evalAfterRel);
-    let wpLoss = Math.max(0, winProb(evalBeforeRel) - winProb(evalAfterRel));
+    const moveUci = move.from + move.to + (move.promotion || '');
+    const isBest = (bestMoveUci === moveUci);
     
-    const isBest = bestMoveUci === move.from + move.to || bestMoveUci === move.from + move.to + (move.promotion || '');
-    if (isBest) {
-      cpLoss = 0;
-      wpLoss = 0;
-    }
-    const classification = classifyMove(cpLoss, isBest, 'captured' in move);
+    let cpLoss = isBest ? 0 : Math.max(0, evalBeforeSide - evalAfterSide);
+    let wpLoss = isBest ? 0 : Math.max(0, winProb(evalBeforeSide) - winProb(evalAfterSide));
+    
+    const classification = classifyMove(cpLoss, isBest, 'captured' in move && !!move.captured);
     
     movesAnalysis.push({
       move_number: Math.floor(i / 2) + 1,
-      color: i % 2 === 0 ? 'white' : 'black',
+      color: isWhiteTurn ? 'white' : 'black',
       move_san: move.san,
-      move_uci: move.from + move.to + (move.promotion || ''),
+      move_uci: moveUci,
       fen_before: fenBefore,
       fen_after: fenAfter,
-      eval_before_cp: evalBeforeCp,
-      eval_after_cp: i % 2 === 0 ? -evalAfterCp : evalAfterCp,
+      eval_before_cp: isWhiteTurn ? evalBeforeSide : -evalBeforeSide,
+      eval_after_cp: evalAfterWhite,
       best_move_uci: bestMoveUci,
-      best_move_san: bestMoveUci,
+      best_move_san: bestMoveSan || bestMoveUci,
       cp_loss: cpLoss,
       classification
     });
     
-    if (i % 2 === 0) whiteCpl.push(wpLoss);
-    else blackCpl.push(wpLoss);
+    if (isWhiteTurn) whiteWpLosses.push(wpLoss);
+    else blackWpLosses.push(wpLoss);
   }
   
   engine.quit();
   
-  const whiteAcc = calculateAccuracy(whiteCpl.reduce((a, b) => a + b, 0) / (whiteCpl.length || 1));
-  const blackAcc = calculateAccuracy(blackCpl.reduce((a, b) => a + b, 0) / (blackCpl.length || 1));
+  // Detect opening if missing from PGN header
+  if (!openingName || openingName === 'Custom Opening') {
+    const detected = getGameOpening(movesAnalysis);
+    openingName = detected && detected.name !== 'Starting Position' ? detected.name : 'Standard Chess Game';
+  }
+  
+  const whiteAcc = calculateAccuracy(whiteWpLosses.reduce((a, b) => a + b, 0) / (whiteWpLosses.length || 1));
+  const blackAcc = calculateAccuracy(blackWpLosses.reduce((a, b) => a + b, 0) / (blackWpLosses.length || 1));
   
   onProgress({
     status: "Generating AI suggestions...",
@@ -125,7 +158,7 @@ export async function analyzeGameLocal(pgn: string, onProgress: (progress: Analy
   });
   
   // Generate suggestions via Next.js API
-  let suggestions = [];
+  const suggestions = [];
   const criticalMoves = movesAnalysis.filter(m => m.classification === 'blunder' || m.classification === 'mistake').slice(0, 3);
   
   for (const m of criticalMoves) {

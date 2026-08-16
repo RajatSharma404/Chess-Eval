@@ -141,7 +141,7 @@ function HomeContent() {
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-none">
-            CHESS<span className="text-emerald-400">IGMA</span>
+            CHESS<span className="text-emerald-400">EVAL</span>
           </h1>
           <p className="text-zinc-400 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
             Professional-grade chess analysis, non-destructive game branching, and natural language AI coaching right in your browser.

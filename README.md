@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/RajatSharma404/Chess-Eval/main/frontend/public/logo.png" alt="Chessigma Logo" width="150"/>
-  <h1>🧠 Chessigma - Advanced Chess Evaluation Platform</h1>
+  <img src="https://raw.githubusercontent.com/RajatSharma404/Chess-Eval/main/frontend/public/logo.png" alt="ChessEval Logo" width="150"/>
+  <h1>🧠 ChessEval - Advanced Chess Evaluation Platform</h1>
   <p><i>Professional-grade chess analysis powered by Stockfish 17 (WASM) and Google Gemini 2.0 AI.</i></p>
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](https://opensource.org/licenses/MIT)
@@ -12,9 +12,9 @@
 
 ## 🌟 Overview
 
-**Chessigma** is a premium, high-performance web application designed to help chess players analyze their games, discover tactical blunders, and learn from their mistakes using natural-language AI coaching.
+**ChessEval** is a premium, high-performance web application designed to help chess players analyze their games, discover tactical blunders, and learn from their mistakes using natural-language AI coaching.
 
-Rather than just displaying raw engine evaluation lines (e.g., `+2.5` or `Nf3+`), Chessigma utilizes **Google Gemini 2.0** to explain *why* a move is a mistake or blunder in plain English. The entire application is architected to be extremely fast and runs natively in your browser using **WebAssembly (WASM)** and **Next.js App Router**, completely eliminating the need for a complex backend server.
+Rather than just displaying raw engine evaluation lines (e.g., `+2.5` or `Nf3+`), ChessEval utilizes **Google Gemini 2.0** to explain *why* a move is a mistake or blunder in plain English. The entire application is architected to be extremely fast and runs natively in your browser using **WebAssembly (WASM)** and **Next.js App Router**, completely eliminating the need for a complex backend server.
 
 It features a stunning, dark-mode focused UI that rivals top-tier platforms like Chess.com and Lichess, complete with real-time evaluation bars, accuracy gauges, interactive move lists, and newly-added support for **non-destructive branching** and **dynamic evaluation graphs**.
 
@@ -47,12 +47,12 @@ Uses a compiled WebAssembly version of `Stockfish 17` (`stockfish.js`) running n
 Integrates `Gemini 2.0 Flash` (via Next.js API routes) to analyze the board state before and after a blunder. It generates human-readable explanations to help you understand complex tactical concepts, turning the engine into a personal coach.
 
 ### 📈 Advanced Dynamic Evaluation Graph
-The evaluation graph utilizes a highly dynamic **non-linear Arctan scale** (`y = atan(cp/200)`). Unlike traditional linear graphs that flatline during subtle positional maneuvering, Chessigma's graph exaggerates small advantage shifts (e.g., moving from +0.2 to +1.0). This provides visually prominent peaks and valleys, allowing players to instantly identify critical momentum shifts in the game.
+The evaluation graph utilizes a highly dynamic **non-linear Arctan scale** (`y = atan(cp/200)`). Unlike traditional linear graphs that flatline during subtle positional maneuvering, ChessEval's graph exaggerates small advantage shifts (e.g., moving from +0.2 to +1.0). This provides visually prominent peaks and valleys, allowing players to instantly identify critical momentum shifts in the game.
 
 ### 🔀 Non-Destructive Move Diversions
 Play out hypothetical variations ("What if I moved here instead?") directly on the analysis board. 
 - Clicking **"Best was: [Move]"** seamlessly injects the engine's recommendation as an indented sub-variation (diversion) directly underneath your played move in the move list.
-- **Mainline Preservation:** Unlike standard analysis boards that truncate your game when you explore a new line, Chessigma preserves your original game history, allowing you to freely explore "what-ifs" without losing your place.
+- **Mainline Preservation:** Unlike standard analysis boards that truncate your game when you explore a new line, ChessEval preserves your original game history, allowing you to freely explore "what-ifs" without losing your place.
 - You can instantly jump back to your original game via the sticky "Restore Mainline" button.
 
 ### 📊 Professional UI Metrics

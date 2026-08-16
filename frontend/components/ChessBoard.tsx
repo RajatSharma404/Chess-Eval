@@ -4,7 +4,10 @@ import { Chess } from 'chess.js';
 import { useGameStore } from '../store/useGameStore';
 import { soundManager } from '../lib/sound';
 
-export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ boardOrientation }) => {
+export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black'; showThreats?: boolean }> = ({ 
+  boardOrientation, 
+  showThreats = false 
+}) => {
   const { 
     analysisResult, 
     currentMoveIndex, 
@@ -71,43 +74,77 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ 
   };
 
   const getSquareStyles = () => {
-    if (!currentMove) return {};
     const styles: any = {};
-    const colorMap: any = {
-      brilliant: 'rgba(2, 132, 199, 0.65)',
-      best: 'rgba(34, 197, 94, 0.65)',
-      good: 'rgba(132, 204, 22, 0.65)',
-      inaccuracy: 'rgba(234, 179, 8, 0.65)',
-      mistake: 'rgba(249, 115, 22, 0.65)',
-      blunder: 'rgba(239, 68, 68, 0.65)',
-    };
-    
-    const targetSquare = currentMove.move_uci.slice(2, 4);
-    styles[targetSquare] = { backgroundColor: colorMap[currentMove.classification] || 'transparent' };
+    if (currentMove && currentMove.move_uci.length >= 4) {
+      const colorMap: any = {
+        brilliant: 'rgba(6, 182, 212, 0.65)',
+        best: 'rgba(34, 197, 94, 0.65)',
+        good: 'rgba(134, 239, 172, 0.5)',
+        inaccuracy: 'rgba(251, 191, 36, 0.65)',
+        mistake: 'rgba(249, 115, 22, 0.65)',
+        blunder: 'rgba(239, 68, 68, 0.65)',
+      };
+      
+      const sourceSquare = currentMove.move_uci.slice(0, 2);
+      const targetSquare = currentMove.move_uci.slice(2, 4);
+      
+      styles[sourceSquare] = { backgroundColor: 'rgba(251, 191, 36, 0.3)' };
+      styles[targetSquare] = { backgroundColor: colorMap[currentMove.classification] || 'rgba(251, 191, 36, 0.5)' };
+    }
+
+    // Threat visualization: find attacked squares
+    if (showThreats) {
+      try {
+        const testChess = new Chess(fen);
+        const activeColor = testChess.turn();
+        const opponentColor = activeColor === 'w' ? 'b' : 'w';
+        
+        // Find hanging/attacked pieces of the active side
+        const board = testChess.board();
+        board.forEach((row) => {
+          row.forEach((piece) => {
+            if (piece && piece.color === activeColor) {
+              const square = piece.square;
+              if (testChess.isAttacked(square, opponentColor)) {
+                styles[square] = {
+                  ...styles[square],
+                  boxShadow: 'inset 0 0 0 3px #ef4444, 0 0 10px rgba(239, 68, 68, 0.5)',
+                };
+              }
+            }
+          });
+        });
+      } catch (e) {}
+    }
+
     return styles;
   };
 
   const customArrows = () => {
-    if (!currentMove || !['blunder', 'mistake', 'inaccuracy'].includes(currentMove.classification)) return [];
-    const best = currentMove.best_move_uci;
-    const played = currentMove.move_uci;
-    
     const arrows: any[] = [];
-    if (played) {
-      arrows.push([played.slice(0, 2), played.slice(2, 4), 'rgba(239, 68, 68, 0.85)']); // Red for mistake
-    }
-    if (best) {
-      arrows.push([best.slice(0, 2), best.slice(2, 4), 'rgba(16, 185, 129, 0.85)']); // Green for best move
-    }
 
-    const suggestion = analysisResult?.suggestions?.find(s => s.move_index === activeMoveIndex);
-    if (suggestion?.arrow && suggestion.arrow.length === 2) {
-      const [from, to] = suggestion.arrow;
-      if ((from + to) !== played.slice(0,4) && (from + to) !== best?.slice(0,4)) {
-        arrows.push([from, to, 'rgba(168, 85, 247, 0.85)']); // Purple for AI insight
+    if (currentMove) {
+      const best = currentMove.best_move_uci;
+      const played = currentMove.move_uci;
+
+      if (['blunder', 'mistake', 'inaccuracy'].includes(currentMove.classification)) {
+        if (played && played.length >= 4) {
+          arrows.push([played.slice(0, 2), played.slice(2, 4), 'rgba(239, 68, 68, 0.85)']);
+        }
+        if (best && best.length >= 4) {
+          arrows.push([best.slice(0, 2), best.slice(2, 4), 'rgba(16, 185, 129, 0.85)']);
+        }
+      }
+
+      const suggestion = analysisResult?.suggestions?.find(s => s.move_index === activeMoveIndex);
+      if (suggestion?.arrow && suggestion.arrow.length === 2) {
+        const [from, to] = suggestion.arrow;
+        if ((from + to) !== played.slice(0, 4) && (from + to) !== best?.slice(0, 4)) {
+          arrows.push([from, to, 'rgba(168, 85, 247, 0.85)']);
+        }
       }
     }
-    
+
     return arrows;
   };
 
@@ -131,12 +168,13 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black' }> = ({ 
 
         const previousMoves = analysisResult.moves.slice(0, activeMoveIndex + 1);
         const evalScore = currentMove ? currentMove.eval_after_cp : 0; 
+        const moveUci = sourceSquare + targetSquare + (move.promotion || '');
         
         const newMove: any = {
           move_number: Math.floor(previousMoves.length / 2) + 1,
-          color: chess.turn() === 'w' ? 'black' : 'white',
+          color: move.color === 'w' ? 'white' : 'black',
           move_san: move.san,
-          move_uci: sourceSquare + targetSquare,
+          move_uci: moveUci,
           fen_before: fen,
           fen_after: chess.fen(),
           eval_before_cp: evalScore,

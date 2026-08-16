@@ -1,4 +1,4 @@
-// Web Audio API Sound Synthesizer for Chessigma
+// Web Audio API Sound Synthesizer for ChessEval
 class SoundManager {
   private ctx: AudioContext | null = null;
 
