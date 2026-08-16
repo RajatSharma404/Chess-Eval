@@ -1,45 +1,57 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useGameStore } from '../../store/useGameStore';
+import React, { useState, useMemo, useRef } from 'react';
+import { useGameStore, Move } from '../../store/useGameStore';
+import { clsx } from 'clsx';
 
 interface AnalysisGraphProps {
   height?: number;
   showBadges?: boolean;
 }
 
-export const AnalysisGraph: React.FC<AnalysisGraphProps> = ({ height = 80, showBadges = true }) => {
+export const AnalysisGraph: React.FC<AnalysisGraphProps> = ({ height = 110, showBadges = true }) => {
   const { analysisResult, currentMoveIndex, setCurrentMoveIndex, setPreviewMoveIndex } = useGameStore();
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [isAnimating, setIsAnimating] = useState(true);
-
-  useEffect(() => {
-    // Trigger animation on mount or when game changes
-    setIsAnimating(true);
-    const timer = setTimeout(() => setIsAnimating(false), 600);
-    return () => clearTimeout(timer);
-  }, [analysisResult?.moves.length]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   if (!analysisResult) return null;
   const moves = analysisResult.moves;
   if (!moves || moves.length === 0) return null;
 
-  const width = 1000; 
+  const width = 600;
 
+  // Sigmoidal / Atan scaling so micro-advantages (e.g. +0.8) are prominent,
+  // while large blunders (+8.0 / mate) smoothly asymptote without squashing the rest of the game.
   const getEvalY = (cp: number) => {
-    // Clamp between -1000 and 1000 (+/- 10 pawns)
-    const clampedCp = Math.max(-1000, Math.min(1000, cp || 0));
-    // map to [height, 0]
-    return (height / 2) - (clampedCp / 1000) * (height / 2);
+    const score = cp || 0;
+    const normalized = Math.atan(score / 280) / (Math.PI / 2); // Ranges -1 to 1
+    return (height / 2) - (normalized * (height * 0.42));
   };
 
   const pointData = useMemo(() => {
     return moves.map((m, i) => {
       const x = (i / Math.max(1, moves.length - 1)) * width;
       const y = getEvalY(m.eval_after_cp);
-      const delta = Math.abs(m.eval_after_cp - (i > 0 ? moves[i-1].eval_after_cp : 0));
-      return { x, y, cp: m.eval_after_cp, delta, classification: m.classification, move_san: m.move_san };
-    });
-  }, [moves, width, height]);
+      const prevEval = i > 0 ? moves[i - 1].eval_after_cp : 0;
+      const delta = Math.abs(m.eval_after_cp - prevEval);
+      const xPct = (i / Math.max(1, moves.length - 1)) * 100;
+      const yPct = (y / height) * 100;
 
+      return {
+        index: i,
+        x,
+        y,
+        xPct,
+        yPct,
+        cp: m.eval_after_cp,
+        delta,
+        classification: m.classification,
+        move_san: m.move_san,
+        move_number: Math.floor(i / 2) + 1,
+        isWhite: i % 2 === 0
+      };
+    });
+  }, [moves, height]);
+
+  // Smooth Catmull-Rom cubic spline interpolation
   const curvePath = useMemo(() => {
     if (pointData.length === 0) return '';
     if (pointData.length === 1) return `M ${pointData[0].x},${pointData[0].y}`;
@@ -52,7 +64,6 @@ export const AnalysisGraph: React.FC<AnalysisGraphProps> = ({ height = 80, showB
       const p2 = pointData[i + 1];
       const p3 = i < pointData.length - 2 ? pointData[i + 2] : p2;
 
-      // Tension = 0.5 (Catmull-Rom) -> divided by 3 for cubic bezier control points -> 1/6
       const cp1x = p1.x + (p2.x - p0.x) / 6;
       const cp1y = p1.y + (p2.y - p0.y) / 6;
       const cp2x = p2.x - (p3.x - p1.x) / 6;
@@ -63,50 +74,56 @@ export const AnalysisGraph: React.FC<AnalysisGraphProps> = ({ height = 80, showB
     return path;
   }, [pointData]);
 
-  const fillPath = pointData.length > 0 
-    ? `${curvePath} L ${pointData[pointData.length - 1].x},${height / 2} L 0,${height / 2} Z` 
-    : '';
+  // Top Area (White Advantage, above center line)
+  const whiteAreaPath = useMemo(() => {
+    if (pointData.length === 0) return '';
+    const lastX = pointData[pointData.length - 1].x;
+    return `${curvePath} L ${lastX},${height / 2} L 0,${height / 2} Z`;
+  }, [curvePath, pointData, height]);
 
+  // Key Moment Badges with smart collision suppression so they NEVER overlap
   const badges = useMemo(() => {
     if (!showBadges) return [];
-    const validBadges: any[] = [];
-    
-    for (let i = 0; i < pointData.length; i++) {
-      const p = pointData[i];
-      const cls = p.classification;
-      
-      // 1. Filter classes
-      if (!['brilliant', 'excellent', 'great', 'inaccuracy', 'mistake', 'blunder'].includes(cls)) continue;
-      
-      // 2. Eval changed >= 0.5 pawns (50 cp)
-      if (p.delta < 50) continue;
-      
-      let badgeY = p.y;
-      
-      // 3. Near 0 offset
-      if (Math.abs(p.cp) < 30) {
-        badgeY -= 15;
+    const keyPoints = pointData.filter(p => 
+      ['blunder', 'mistake', 'brilliant'].includes(p.classification) ||
+      (p.classification === 'inaccuracy' && p.delta >= 120)
+    );
+
+    const filtered: typeof pointData = [];
+    const minHorizontalDistancePct = 5.5; // Min 5.5% distance between badges
+
+    // Sort by severity so worst blunders and brilliants take priority
+    const severityRank: Record<string, number> = {
+      brilliant: 4,
+      blunder: 3,
+      mistake: 2,
+      inaccuracy: 1
+    };
+
+    const sortedByPriority = [...keyPoints].sort((a, b) => 
+      (severityRank[b.classification] || 0) - (severityRank[a.classification] || 0)
+    );
+
+    for (const point of sortedByPriority) {
+      const collides = filtered.some(existing => 
+        Math.abs(existing.xPct - point.xPct) < minHorizontalDistancePct
+      );
+      if (!collides) {
+        filtered.push(point);
       }
-      
-      // 4. Overlap resolution
-      const overlap = validBadges.find(b => Math.abs(b.x - p.x) < 12 && Math.abs(b.iconY - badgeY) < 20);
-      if (overlap) {
-        badgeY -= 20;
-      }
-      
-      validBadges.push({ ...p, iconY: badgeY, badgeCls: cls, index: i });
     }
-    return validBadges;
+
+    return filtered.sort((a, b) => a.index - b.index);
   }, [pointData, showBadges]);
 
-  const displayIndex = currentMoveIndex;
-  const activeX = displayIndex >= 0 && displayIndex < moves.length ? pointData[displayIndex].x : 0;
-  const activeY = displayIndex >= 0 && displayIndex < moves.length ? pointData[displayIndex].y : height / 2;
+  const activeIndex = hoverIndex !== null ? hoverIndex : currentMoveIndex;
+  const activePoint = activeIndex >= 0 && activeIndex < pointData.length ? pointData[activeIndex] : null;
 
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
     const xPos = e.clientX - rect.left;
-    const pct = xPos / rect.width;
+    const pct = Math.max(0, Math.min(1, xPos / rect.width));
     const idx = Math.round(pct * (moves.length - 1));
     const safeIdx = Math.max(0, Math.min(moves.length - 1, idx));
     setHoverIndex(safeIdx);
@@ -118,150 +135,215 @@ export const AnalysisGraph: React.FC<AnalysisGraphProps> = ({ height = 80, showB
     setPreviewMoveIndex(null);
   };
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (hoverIndex !== null) {
       setCurrentMoveIndex(hoverIndex);
     }
   };
 
-  const getBadgeStyle = (cls: string) => {
+  const getBadgeMeta = (cls: string) => {
     switch (cls) {
-      case 'brilliant': return { bg: '#06b6d4', sym: '!!' };
-      case 'excellent': 
-      case 'great': return { bg: '#86efac', sym: '!' };
-      case 'inaccuracy': return { bg: '#f59e0b', sym: '?!' };
-      case 'mistake': return { bg: '#f97316', sym: '?' };
-      case 'blunder': return { bg: '#ef4444', sym: '??' };
-      default: return { bg: '#71717a', sym: '' };
+      case 'brilliant':
+        return { label: '!!', bg: 'bg-cyan-500 shadow-cyan-500/50', text: 'text-cyan-950', ring: 'ring-cyan-400/40' };
+      case 'blunder':
+        return { label: '??', bg: 'bg-red-500 shadow-red-500/50', text: 'text-white', ring: 'ring-red-400/40' };
+      case 'mistake':
+        return { label: '?', bg: 'bg-orange-500 shadow-orange-500/50', text: 'text-white', ring: 'ring-orange-400/40' };
+      case 'inaccuracy':
+        return { label: '?!', bg: 'bg-amber-400 shadow-amber-400/50', text: 'text-amber-950', ring: 'ring-amber-300/40' };
+      default:
+        return { label: '✓', bg: 'bg-emerald-500', text: 'text-black', ring: 'ring-emerald-400/40' };
     }
   };
 
   return (
-    <div className="w-full relative cursor-crosshair group" style={{ height: height }}>
-      <svg 
-        viewBox={`0 0 ${width} ${height}`} 
-        className="w-full h-full overflow-visible" 
-        preserveAspectRatio="none"
+    <div className="w-full flex flex-col gap-1.5 select-none font-sans">
+      {/* Advantage Metrics Top Legend */}
+      <div className="flex justify-between items-center px-1 text-[10px] text-zinc-400 font-mono">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span className="font-bold text-zinc-300">White Advantage</span>
+        </div>
+        <div className="text-zinc-500">Evaluation Curve</div>
+        <div className="flex items-center gap-1.5">
+          <span className="font-bold text-zinc-300">Black Advantage</span>
+          <span className="w-2 h-2 rounded-full bg-red-400"></span>
+        </div>
+      </div>
+
+      {/* Main Graph Card */}
+      <div 
+        ref={containerRef}
+        className="w-full relative rounded-xl bg-gradient-to-b from-[#18181b] via-[#121215] to-[#09090b] border border-white/10 shadow-inner overflow-hidden cursor-crosshair group"
+        style={{ height: height }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
       >
-        <defs>
-          <clipPath id="whiteClip">
-            <rect x="0" y="0" width={width} height={height / 2} />
-          </clipPath>
-          <clipPath id="blackClip">
-            <rect x="0" y={height / 2} width={width} height={height / 2} />
-          </clipPath>
-          <clipPath id="revealMask">
-             <rect x="0" y="0" width={width} height={height} className={isAnimating ? "animate-reveal-graph" : ""} />
-          </clipPath>
-        </defs>
-        
-        <style>
-          {`
-            @keyframes revealGraph {
-              0% { width: 0; }
-              100% { width: ${width}px; }
-            }
-            .animate-reveal-graph {
-              animation: revealGraph 600ms ease-out forwards;
-            }
-          `}
-        </style>
+        {/* SVG Drawing Layer */}
+        <svg 
+          viewBox={`0 0 ${width} ${height}`} 
+          className="w-full h-full block" 
+          preserveAspectRatio="none"
+        >
+          <defs>
+            {/* White Advantage Gradient */}
+            <linearGradient id="whiteAdvantageGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.45" />
+              <stop offset="50%" stopColor="#10b981" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+            </linearGradient>
 
-        <g clipPath="url(#revealMask)">
-          {/* White Advantage Area */}
-          <path 
-            d={fillPath} 
-            fill="rgba(255, 255, 255, 0.85)" 
-            clipPath="url(#whiteClip)" 
+            {/* Black Advantage Gradient */}
+            <linearGradient id="blackAdvantageGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.02" />
+              <stop offset="50%" stopColor="#ef4444" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.45" />
+            </linearGradient>
+
+            {/* Curve Line Gradient */}
+            <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#38bdf8" />
+              <stop offset="50%" stopColor="#10b981" />
+              <stop offset="100%" stopColor="#fbbf24" />
+            </linearGradient>
+
+            {/* Clip masks for split zero-line shading */}
+            <clipPath id="topClip">
+              <rect x="0" y="0" width={width} height={height / 2} />
+            </clipPath>
+            <clipPath id="bottomClip">
+              <rect x="0" y={height / 2} width={width} height={height / 2} />
+            </clipPath>
+          </defs>
+
+          {/* Background Grid Lines */}
+          <line x1="0" y1={height * 0.25} x2={width} y2={height * 0.25} stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="3 3" />
+          <line x1="0" y1={height * 0.75} x2={width} y2={height * 0.75} stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="3 3" />
+
+          {/* Zero Neutral Center Line */}
+          <line 
+            x1="0" 
+            y1={height / 2} 
+            x2={width} 
+            y2={height / 2} 
+            stroke="rgba(255, 255, 255, 0.18)" 
+            strokeWidth="1" 
+            strokeDasharray="4 3" 
           />
-          
-          {/* Black Advantage Area */}
+
+          {/* Top Half Fill (White Advantage) */}
           <path 
-            d={fillPath} 
-            fill="rgba(30, 30, 30, 0.9)" 
-            stroke="rgba(255, 255, 255, 0.1)"
-            strokeWidth="1"
-            clipPath="url(#blackClip)" 
+            d={whiteAreaPath} 
+            fill="url(#whiteAdvantageGrad)" 
+            clipPath="url(#topClip)" 
           />
-          
-          {/* Center Line */}
-          <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="#3f3f46" strokeWidth="1" strokeDasharray="4 3" />
-          
-          {/* Eval Line (Hero Curve) */}
+
+          {/* Bottom Half Fill (Black Advantage) */}
+          <path 
+            d={whiteAreaPath} 
+            fill="url(#blackAdvantageGrad)" 
+            clipPath="url(#bottomClip)" 
+          />
+
+          {/* Glowing Ambient Curve Background */}
           <path 
             d={curvePath} 
             fill="none" 
-            stroke="rgba(255, 255, 255, 0.4)" 
-            strokeWidth="1" 
+            stroke="#10b981" 
+            strokeWidth="3.5" 
+            strokeOpacity="0.25"
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
           />
-        </g>
 
-        {/* Hover Hairline */}
+          {/* Hero Advantage Curve Line */}
+          <path 
+            d={curvePath} 
+            fill="none" 
+            stroke="url(#lineGrad)" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+          />
+        </svg>
+
+        {/* Laser Cursor & Point for Active/Hovered Move */}
+        {activePoint && (
+          <div 
+            className="absolute top-0 bottom-0 pointer-events-none transition-all duration-75 z-20"
+            style={{ left: `${activePoint.xPct}%` }}
+          >
+            {/* Vertical Guide Line */}
+            <div className="absolute inset-y-0 w-[1.5px] -translate-x-1/2 bg-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+
+            {/* Glowing Focal Point On Curve */}
+            <div 
+              className="absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white border-2 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.9)]"
+              style={{ top: `${activePoint.yPct}%` }}
+            />
+          </div>
+        )}
+
+        {/* HTML Badges Overlay - Always perfectly circular and crisp! */}
+        {showBadges && badges.map((b) => {
+          const meta = getBadgeMeta(b.classification);
+          const isSelected = currentMoveIndex === b.index;
+
+          return (
+            <button
+              key={b.index}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentMoveIndex(b.index);
+              }}
+              title={`Move ${b.move_number}${b.isWhite ? '.' : '...'} ${b.move_san} (${b.classification})`}
+              className={clsx(
+                "absolute -translate-x-1/2 -translate-y-1/2 w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full flex items-center justify-center font-black text-[9px] sm:text-[10px] leading-none shadow-md transition-transform hover:scale-125 z-10 ring-1",
+                meta.bg,
+                meta.text,
+                meta.ring,
+                isSelected ? "scale-125 ring-2 ring-white" : "hover:z-30"
+              )}
+              style={{
+                left: `${b.xPct}%`,
+                top: `${b.yPct}%`
+              }}
+            >
+              {meta.label}
+            </button>
+          );
+        })}
+
+        {/* Glassmorphic Interactive Hover Tooltip */}
         {hoverIndex !== null && pointData[hoverIndex] && (
-          <line 
-            x1={pointData[hoverIndex].x} 
-            y1="0" 
-            x2={pointData[hoverIndex].x} 
-            y2={height} 
-            stroke="#52525b" 
-            strokeWidth="1" 
-            strokeDasharray="4 2"
-            className="pointer-events-none"
-          />
-        )}
-
-        {/* Current Position Indicator */}
-        {displayIndex >= 0 && displayIndex < moves.length && (
-           <g className="transition-transform duration-75 pointer-events-none">
-             <line x1={activeX} y1="0" x2={activeX} y2={height} stroke="#fbbf24" strokeWidth="1" opacity="0.7" />
-             <circle 
-               cx={activeX} 
-               cy={activeY} 
-               r="3" 
-               fill="#fbbf24"
-             />
-           </g>
-        )}
-
-        {/* Badges Overlay */}
-        <g className={isAnimating ? "animate-reveal-graph" : ""} clipPath="url(#revealMask)">
-          {badges.map((b, i) => {
-            const { bg, sym } = getBadgeStyle(b.badgeCls);
-            // "MISTAKE" uses a single "?" in a slightly larger circle according to spec
-            const r = b.badgeCls === 'mistake' ? 10 : 9; 
-            return (
-              <g key={i} transform={`translate(${b.x}, ${b.iconY})`} className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] pointer-events-none">
-                <circle cx="0" cy="0" r={r} fill={bg} stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-                <text x="0" y="0.5" fontSize={b.badgeCls === 'mistake' ? "12" : "9"} fontWeight="bold" fill="white" textAnchor="middle" dominantBaseline="middle">
-                  {sym}
-                </text>
-              </g>
-            );
-          })}
-        </g>
-      </svg>
-      
-      {/* Tooltip */}
-      {hoverIndex !== null && pointData[hoverIndex] && (
-        <div 
-          className="absolute z-50 bg-zinc-900 border border-zinc-700 rounded-lg text-xs text-white shadow-xl px-3 py-2 pointer-events-none transform -translate-x-1/2 min-w-[120px]"
-          style={{
-            left: `${(pointData[hoverIndex].x / width) * 100}%`,
-            top: pointData[hoverIndex].y > height / 2 ? -45 : height + 10
-          }}
-        >
-          <div className="font-bold text-zinc-300 whitespace-nowrap mb-0.5">
-            Move {Math.floor(hoverIndex/2)+1} · {pointData[hoverIndex].move_san}
+          <div 
+            className="absolute z-40 bg-zinc-950/95 backdrop-blur-md border border-white/15 rounded-xl text-xs text-white shadow-2xl p-2.5 pointer-events-none transform -translate-x-1/2 min-w-[130px]"
+            style={{
+              left: `${pointData[hoverIndex].xPct}%`,
+              top: pointData[hoverIndex].yPct > 50 ? '8px' : `${height - 62}px`
+            }}
+          >
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="font-bold text-amber-400 font-mono">
+                {pointData[hoverIndex].move_number}{pointData[hoverIndex].isWhite ? '.' : '...'} {pointData[hoverIndex].move_san}
+              </span>
+              <span className="text-[10px] font-mono text-zinc-400">
+                {pointData[hoverIndex].cp > 0 ? '+' : ''}{(pointData[hoverIndex].cp / 100).toFixed(1)}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between text-[10px] text-zinc-400 capitalize">
+              <span>{pointData[hoverIndex].classification || 'book move'}</span>
+              {pointData[hoverIndex].delta > 30 && (
+                <span className="text-red-400 font-mono">
+                  -{(pointData[hoverIndex].delta / 100).toFixed(1)}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="text-zinc-400">
-            Eval: {(pointData[hoverIndex].cp / 100).toFixed(1)}
-            {pointData[hoverIndex].classification && <span className="capitalize ml-1 text-zinc-300">({pointData[hoverIndex].classification})</span>}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

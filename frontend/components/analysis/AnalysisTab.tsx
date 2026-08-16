@@ -198,7 +198,7 @@ export const AnalysisTab: React.FC = () => {
 
       {/* Evaluation Graph Box */}
       <div className="mt-auto bg-[#121214] rounded-2xl p-3 border border-white/10 shadow-xl space-y-3">
-        <AnalysisGraph height={90} showBadges={true} />
+        <AnalysisGraph height={110} showBadges={true} />
         
         {/* Playback & Navigation Toolbar */}
         <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
