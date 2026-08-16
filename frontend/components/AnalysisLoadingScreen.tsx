@@ -5,7 +5,7 @@ import { Check } from 'lucide-react';
 
 export function AnalysisLoadingScreen() {
   const router = useRouter();
-  const { progressStatus, reset, setLoading } = useGameStore();
+  const { progressStatus, reset, setLoading, cancelAnalysis } = useGameStore();
   const [cancelPrompt, setCancelPrompt] = useState(false);
   
   // Timer for ETA calculation
@@ -45,9 +45,9 @@ export function AnalysisLoadingScreen() {
   }
 
   const handleCancel = () => {
-    setLoading(false);
+    cancelAnalysis();
     reset();
-    router.back();
+    router.push('/');
   };
 
   return (

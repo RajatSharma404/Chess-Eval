@@ -36,7 +36,11 @@ function uciToSan(fen: string, uci: string | null): string {
   }
 }
 
-export async function analyzeGameLocal(pgn: string, onProgress: (progress: AnalysisProgress | string) => void): Promise<any> {
+export async function analyzeGameLocal(
+  pgn: string, 
+  onProgress: (progress: AnalysisProgress | string) => void,
+  signal?: AbortSignal
+): Promise<any> {
   const chess = new Chess();
   chess.loadPgn(pgn);
   
@@ -59,11 +63,21 @@ export async function analyzeGameLocal(pgn: string, onProgress: (progress: Analy
   
   onProgress({ status: "Initializing Chess Engine..." });
   
+  if (signal?.aborted) {
+    engine.quit();
+    throw new DOMException('Analysis cancelled', 'AbortError');
+  }
+
   // Single-pass evaluation: evaluate initial position once
   let currentFen = testChess.fen();
-  let currentEngineInfo = await engine.analyzePosition(currentFen, 12);
+  let currentEngineInfo = await engine.analyzePosition(currentFen, 12, signal);
   
   for (let i = 0; i < totalMoves; i++) {
+    if (signal?.aborted) {
+      engine.quit();
+      throw new DOMException('Analysis cancelled', 'AbortError');
+    }
+
     const currentLine = history.slice(Math.max(0, i - 4), i + 1).map(m => m.san).join(' ');
     onProgress({
       status: `Analyzing move ${i + 1}/${totalMoves}...`,
@@ -101,7 +115,7 @@ export async function analyzeGameLocal(pgn: string, onProgress: (progress: Analy
         currentEngineInfo = { bestMove: null, evalCp: 0 };
       }
     } else {
-      currentEngineInfo = await engine.analyzePosition(fenAfter, 12);
+      currentEngineInfo = await engine.analyzePosition(fenAfter, 12, signal);
       // In fenAfter, it is the opponent's turn.
       // So currentEngineInfo.evalCp is the OPPONENT'S evaluation.
       // Therefore, the evaluation for the player who just moved is -currentEngineInfo.evalCp.

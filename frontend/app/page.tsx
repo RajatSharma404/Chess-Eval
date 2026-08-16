@@ -40,7 +40,18 @@ const MASTER_GAMES = [
 ];
 
 function HomeContent() {
-  const { gameUrl, setGameUrl, setAnalysisResult, setLoading, setError, isLoading, error, progressStatus, setProgressStatus } = useGameStore();
+  const { 
+    gameUrl, 
+    setGameUrl, 
+    setAnalysisResult, 
+    setLoading, 
+    setError, 
+    isLoading, 
+    error, 
+    progressStatus, 
+    setProgressStatus,
+    setAnalysisAbortController 
+  } = useGameStore();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -60,19 +71,25 @@ function HomeContent() {
   }, []);
 
   const handleAnalyzeGame = async (pgn: string) => {
+    const controller = new AbortController();
+    setAnalysisAbortController(controller);
     setGameUrl(pgn);
     setLoading(true);
     setError(null);
-    setProgressStatus("Initializing Stockfish 17 WASM engine...");
+    setProgressStatus("Initializing Stockfish 17 AVX2 engine...");
     try {
-      const result = await analyzeGame(pgn, (status) => setProgressStatus(status));
+      const result = await analyzeGame(pgn, (status) => setProgressStatus(status), controller.signal);
       setAnalysisResult(result);
       router.push('/analyze');
     } catch (err: any) {
+      if (err?.name === 'AbortError' || err?.message === 'Analysis cancelled' || controller.signal.aborted) {
+        return;
+      }
       setError(err.message);
     } finally {
       setLoading(false);
       setProgressStatus(null);
+      setAnalysisAbortController(null);
     }
   };
 

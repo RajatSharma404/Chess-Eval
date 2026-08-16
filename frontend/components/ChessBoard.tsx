@@ -12,17 +12,33 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black'; showThr
     analysisResult, 
     currentMoveIndex, 
     previewMoveIndex, 
-    branchGame, 
+    activeVariation,
+    setActiveVariation,
+    addVariation,
+    appendVariationMove,
+    setCurrentMoveIndex,
     soundEnabled, 
     boardTheme 
   } = useGameStore();
-  
-  const activeMoveIndex = previewMoveIndex !== null ? previewMoveIndex : currentMoveIndex;
 
-  const currentMove = activeMoveIndex >= 0 && analysisResult && activeMoveIndex < analysisResult.moves.length 
-    ? analysisResult.moves[activeMoveIndex] 
-    : null;
-  const fen = currentMove?.fen_after ? currentMove.fen_after : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  let fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  let currentMove: any = null;
+
+  if (activeVariation && analysisResult) {
+    const parentMove = analysisResult.moves[activeVariation.parentMoveIndex];
+    const variationList = parentMove?.variations?.[activeVariation.variationIndex];
+    const varMove = variationList?.[activeVariation.moveIndex];
+    if (varMove) {
+      fen = varMove.fen_after;
+      currentMove = varMove;
+    }
+  } else {
+    const activeMoveIndex = previewMoveIndex !== null ? previewMoveIndex : currentMoveIndex;
+    if (activeMoveIndex >= 0 && analysisResult && activeMoveIndex < analysisResult.moves.length) {
+      currentMove = analysisResult.moves[activeMoveIndex];
+      fen = currentMove.fen_after;
+    }
+  }
 
   const [mounted, setMounted] = useState(false);
 
@@ -32,18 +48,18 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black'; showThr
 
   // Play audio sound on move step change
   useEffect(() => {
-    if (!mounted || !soundEnabled || activeMoveIndex < 0 || !currentMove) return;
+    if (!mounted || !soundEnabled || !currentMove) return;
 
     if (currentMove.classification === 'blunder') {
       soundManager.playBlunderSound();
-    } else if (currentMove.move_san.includes('+') || currentMove.move_san.includes('#')) {
+    } else if (currentMove.move_san?.includes('+') || currentMove.move_san?.includes('#')) {
       soundManager.playCheckSound();
-    } else if (currentMove.move_san.includes('x')) {
+    } else if (currentMove.move_san?.includes('x')) {
       soundManager.playCaptureSound();
     } else {
       soundManager.playMoveSound();
     }
-  }, [activeMoveIndex, soundEnabled, mounted]);
+  }, [currentMove, soundEnabled, mounted]);
 
   if (!mounted) return <div className="w-[500px] aspect-square bg-gray-800 rounded-xl animate-pulse" />;
 
@@ -75,7 +91,7 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black'; showThr
 
   const getSquareStyles = () => {
     const styles: any = {};
-    if (currentMove && currentMove.move_uci.length >= 4) {
+    if (currentMove && currentMove.move_uci && currentMove.move_uci.length >= 4) {
       const colorMap: any = {
         brilliant: 'rgba(6, 182, 212, 0.65)',
         best: 'rgba(34, 197, 94, 0.65)',
@@ -136,10 +152,11 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black'; showThr
         }
       }
 
+      const activeMoveIndex = previewMoveIndex !== null ? previewMoveIndex : currentMoveIndex;
       const suggestion = analysisResult?.suggestions?.find(s => s.move_index === activeMoveIndex);
       if (suggestion?.arrow && suggestion.arrow.length === 2) {
         const [from, to] = suggestion.arrow;
-        if ((from + to) !== played.slice(0, 4) && (from + to) !== best?.slice(0, 4)) {
+        if ((from + to) !== played?.slice(0, 4) && (from + to) !== best?.slice(0, 4)) {
           arrows.push([from, to, 'rgba(168, 85, 247, 0.85)']);
         }
       }
@@ -160,39 +177,77 @@ export const ChessBoard: React.FC<{ boardOrientation: 'white' | 'black'; showThr
         promotion: 'q',
       });
       
-      if (move) {
-        if (soundEnabled) {
-          if (move.captured) soundManager.playCaptureSound();
-          else soundManager.playMoveSound();
+      if (!move) return false;
+
+      if (soundEnabled) {
+        if (move.captured) soundManager.playCaptureSound();
+        else soundManager.playMoveSound();
+      }
+
+      const moveUci = sourceSquare + targetSquare + (move.promotion || '');
+
+      // Case 1: Already inside an active variation branch
+      if (activeVariation) {
+        const parentMove = analysisResult.moves[activeVariation.parentMoveIndex];
+        const currentVar = parentMove?.variations?.[activeVariation.variationIndex] || [];
+        const nextVarMoveIndex = activeVariation.moveIndex + 1;
+
+        if (currentVar[nextVarMoveIndex] && currentVar[nextVarMoveIndex].move_uci === moveUci) {
+          setActiveVariation({
+            ...activeVariation,
+            moveIndex: nextVarMoveIndex
+          });
+          return true;
         }
 
-        const previousMoves = analysisResult.moves.slice(0, activeMoveIndex + 1);
-        const evalScore = currentMove ? currentMove.eval_after_cp : 0; 
-        const moveUci = sourceSquare + targetSquare + (move.promotion || '');
-        
-        const newMove: any = {
-          move_number: Math.floor(previousMoves.length / 2) + 1,
+        const newVarMove: any = {
+          move_number: Math.floor((activeVariation.parentMoveIndex + nextVarMoveIndex + 1) / 2) + 1,
           color: move.color === 'w' ? 'white' : 'black',
           move_san: move.san,
           move_uci: moveUci,
           fen_before: fen,
           fen_after: chess.fen(),
-          eval_before_cp: evalScore,
-          eval_after_cp: evalScore, 
+          eval_before_cp: 0,
+          eval_after_cp: 0,
           cp_loss: 0,
           classification: 'good',
           best_move_san: '',
           best_move_uci: ''
         };
-        
-        const newMoves = [...previousMoves, newMove];
-        branchGame(newMoves, newMoves.length - 1);
+
+        appendVariationMove(activeVariation.parentMoveIndex, activeVariation.variationIndex, newVarMove);
         return true;
       }
+
+      // Case 2: Move matches the next move in mainline
+      const nextMainlineMove = analysisResult.moves[currentMoveIndex + 1];
+      if (nextMainlineMove && nextMainlineMove.move_uci === moveUci) {
+        setCurrentMoveIndex(currentMoveIndex + 1);
+        return true;
+      }
+
+      // Case 3: Create a new variation branch under currentMoveIndex
+      const parentIndex = Math.max(0, currentMoveIndex);
+      const newMove: any = {
+        move_number: Math.floor((parentIndex + 1) / 2) + 1,
+        color: move.color === 'w' ? 'white' : 'black',
+        move_san: move.san,
+        move_uci: moveUci,
+        fen_before: fen,
+        fen_after: chess.fen(),
+        eval_before_cp: 0,
+        eval_after_cp: 0,
+        cp_loss: 0,
+        classification: 'good',
+        best_move_san: '',
+        best_move_uci: ''
+      };
+
+      addVariation(parentIndex, [newMove]);
+      return true;
     } catch (e) {
       return false;
     }
-    return false;
   };
 
   const files = boardOrientation === 'white' ? ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] : ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'];

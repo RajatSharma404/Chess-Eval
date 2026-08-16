@@ -305,7 +305,7 @@ export default function AnalyzePage() {
           </div>
           
           {/* Tab Body */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar relative bg-[#121214] flex flex-col min-h-0">
+          <div className="flex-1 overflow-hidden relative bg-[#121214] flex flex-col min-h-0">
             {activeTab === 'analysis' && <AnalysisTab />}
             {activeTab === 'moves' && <MoveList />}
             {activeTab === 'engine' && <LiveEngine />}

@@ -27,7 +27,14 @@ function HistoryContent() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  const { setGameUrl, setAnalysisResult, setLoading: setEngineLoading, setProgressStatus, isLoading: engineLoading } = useGameStore();
+  const { 
+    setGameUrl, 
+    setAnalysisResult, 
+    setLoading: setEngineLoading, 
+    setProgressStatus, 
+    isLoading: engineLoading,
+    setAnalysisAbortController 
+  } = useGameStore();
 
   const fetchGames = async () => {
     if (!username) {
@@ -160,18 +167,24 @@ function HistoryContent() {
   }, [games, username]);
 
   const handleAnalyzeGame = async (pgn: string) => {
+    const controller = new AbortController();
+    setAnalysisAbortController(controller);
     setGameUrl(pgn);
     setEngineLoading(true);
     setProgressStatus("Analyzing game...");
     try {
-      const result = await analyzeGame(pgn, (status) => setProgressStatus(status));
+      const result = await analyzeGame(pgn, (status) => setProgressStatus(status), controller.signal);
       setAnalysisResult(result);
       router.push('/analyze');
     } catch (err: any) {
+      if (err?.name === 'AbortError' || err?.message === 'Analysis cancelled' || controller.signal.aborted) {
+        return;
+      }
       alert("Error parsing PGN for analysis: " + err.message);
     } finally {
       setEngineLoading(false);
       setProgressStatus(null);
+      setAnalysisAbortController(null);
     }
   };
 

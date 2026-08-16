@@ -45,6 +45,12 @@ export interface AnalysisProgress {
   isComplete?: boolean;
 }
 
+export interface ActiveVariation {
+  parentMoveIndex: number;
+  variationIndex: number;
+  moveIndex: number;
+}
+
 export type BoardTheme = 'emerald' | 'wood' | 'cyber' | 'slate';
 export type CoachPersona = 'magnus' | 'anna' | 'tal' | 'capablanca';
 
@@ -54,9 +60,11 @@ interface GameState {
   originalAnalysisResult: AnalysisResult | null;
   currentMoveIndex: number;
   previewMoveIndex: number | null;
+  activeVariation: ActiveVariation | null;
   isLoading: boolean;
   error: string | null;
   progressStatus: AnalysisProgress | null;
+  analysisAbortController: AbortController | null;
   
   // Customization & Media
   soundEnabled: boolean;
@@ -69,12 +77,17 @@ interface GameState {
   setAnalysisResult: (result: AnalysisResult) => void;
   setCurrentMoveIndex: (index: number) => void;
   setPreviewMoveIndex: (index: number | null) => void;
+  setActiveVariation: (v: ActiveVariation | null) => void;
   setLoading: (loading: boolean) => void;
   setProgressStatus: (status: AnalysisProgress | string | null) => void;
+  setAnalysisAbortController: (ctrl: AbortController | null) => void;
+  cancelAnalysis: () => void;
   setError: (error: string | null) => void;
   reset: () => void;
   branchGame: (newMoves: Move[], newIndex: number) => void;
   addVariation: (moveIndex: number, variation: Move[]) => void;
+  appendVariationMove: (parentMoveIndex: number, variationIndex: number, move: Move) => void;
+  deleteVariation: (parentMoveIndex: number, variationIndex: number) => void;
   restoreMainline: () => void;
   
   toggleSound: () => void;
@@ -84,14 +97,16 @@ interface GameState {
   setCoachPersona: (persona: CoachPersona) => void;
 }
 
-export const useGameStore = create<GameState>((set) => ({
+export const useGameStore = create<GameState>((set, get) => ({
   gameUrl: '',
   analysisResult: null,
   originalAnalysisResult: null,
   currentMoveIndex: -1,
   previewMoveIndex: null,
+  activeVariation: null,
   isLoading: false,
   progressStatus: null,
+  analysisAbortController: null,
   error: null,
   
   soundEnabled: true,
@@ -101,9 +116,16 @@ export const useGameStore = create<GameState>((set) => ({
   coachPersona: 'magnus',
 
   setGameUrl: (url) => set({ gameUrl: url }),
-  setAnalysisResult: (result) => set({ analysisResult: result, originalAnalysisResult: result, currentMoveIndex: -1, previewMoveIndex: null }),
-  setCurrentMoveIndex: (index) => set({ currentMoveIndex: index, previewMoveIndex: null }),
+  setAnalysisResult: (result) => set({ 
+    analysisResult: result, 
+    originalAnalysisResult: result, 
+    currentMoveIndex: -1, 
+    previewMoveIndex: null,
+    activeVariation: null 
+  }),
+  setCurrentMoveIndex: (index) => set({ currentMoveIndex: index, previewMoveIndex: null, activeVariation: null }),
   setPreviewMoveIndex: (index) => set({ previewMoveIndex: index }),
+  setActiveVariation: (v) => set({ activeVariation: v }),
   setLoading: (loading) => set({ isLoading: loading }),
   setProgressStatus: (status) => {
     if (typeof status === 'string') {
@@ -112,30 +134,103 @@ export const useGameStore = create<GameState>((set) => ({
       set({ progressStatus: status });
     }
   },
+  setAnalysisAbortController: (ctrl) => set({ analysisAbortController: ctrl }),
+  cancelAnalysis: () => {
+    const { analysisAbortController } = get();
+    if (analysisAbortController) {
+      analysisAbortController.abort();
+    }
+    set({
+      isLoading: false,
+      progressStatus: null,
+      analysisAbortController: null,
+    });
+  },
   setError: (error) => set({ error }),
-  reset: () => set({ gameUrl: '', analysisResult: null, originalAnalysisResult: null, currentMoveIndex: -1, error: null, progressStatus: null }),
+  reset: () => set({ 
+    gameUrl: '', 
+    analysisResult: null, 
+    originalAnalysisResult: null, 
+    currentMoveIndex: -1, 
+    activeVariation: null,
+    error: null, 
+    progressStatus: null 
+  }),
   branchGame: (newMoves, newIndex) => set((state) => ({
     analysisResult: state.analysisResult ? { ...state.analysisResult, moves: newMoves } : null,
     originalAnalysisResult: state.originalAnalysisResult || state.analysisResult,
-    currentMoveIndex: newIndex
+    currentMoveIndex: newIndex,
+    activeVariation: null
   })),
   addVariation: (moveIndex, variation) => set((state) => {
     if (!state.analysisResult) return state;
     const newMoves = [...state.analysisResult.moves];
-    const move = newMoves[moveIndex];
+    const targetIdx = moveIndex >= 0 ? moveIndex : 0;
+    const move = newMoves[targetIdx];
     if (move) {
-      newMoves[moveIndex] = {
-        ...move,
-        variations: [...(move.variations || []), variation]
+      const existing = move.variations || [];
+      const varUci = variation[0]?.move_uci;
+      const existingIdx = existing.findIndex(v => v[0]?.move_uci === varUci);
+      
+      let finalVarIndex = existing.length;
+      if (existingIdx !== -1) {
+        finalVarIndex = existingIdx;
+      } else {
+        newMoves[targetIdx] = {
+          ...move,
+          variations: [...existing, variation]
+        };
+      }
+      return {
+        analysisResult: { ...state.analysisResult, moves: newMoves },
+        activeVariation: { parentMoveIndex: targetIdx, variationIndex: finalVarIndex, moveIndex: variation.length - 1 }
       };
     }
-    return {
-      analysisResult: { ...state.analysisResult, moves: newMoves }
-    };
+    return state;
+  }),
+  appendVariationMove: (parentMoveIndex, variationIndex, move) => set((state) => {
+    if (!state.analysisResult) return state;
+    const newMoves = [...state.analysisResult.moves];
+    const parentMove = newMoves[parentMoveIndex];
+    if (parentMove && parentMove.variations && parentMove.variations[variationIndex]) {
+      const varList = [...parentMove.variations];
+      varList[variationIndex] = [...varList[variationIndex], move];
+      newMoves[parentMoveIndex] = {
+        ...parentMove,
+        variations: varList
+      };
+      return {
+        analysisResult: { ...state.analysisResult, moves: newMoves },
+        activeVariation: {
+          parentMoveIndex,
+          variationIndex,
+          moveIndex: varList[variationIndex].length - 1
+        }
+      };
+    }
+    return state;
+  }),
+  deleteVariation: (parentMoveIndex, variationIndex) => set((state) => {
+    if (!state.analysisResult) return state;
+    const newMoves = [...state.analysisResult.moves];
+    const parentMove = newMoves[parentMoveIndex];
+    if (parentMove && parentMove.variations) {
+      const varList = parentMove.variations.filter((_, idx) => idx !== variationIndex);
+      newMoves[parentMoveIndex] = {
+        ...parentMove,
+        variations: varList
+      };
+      return {
+        analysisResult: { ...state.analysisResult, moves: newMoves },
+        activeVariation: null
+      };
+    }
+    return state;
   }),
   restoreMainline: () => set((state) => ({
     analysisResult: state.originalAnalysisResult,
-    currentMoveIndex: state.originalAnalysisResult ? state.originalAnalysisResult.moves.length - 1 : -1
+    currentMoveIndex: state.originalAnalysisResult ? state.originalAnalysisResult.moves.length - 1 : -1,
+    activeVariation: null
   })),
 
   toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),

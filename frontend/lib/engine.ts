@@ -4,12 +4,25 @@ export class StockfishEngine {
 
   constructor() {}
 
-  public analyzePosition(fen: string, depth: number = 15): Promise<any> {
-    return new Promise((resolve) => {
+  public analyzePosition(fen: string, depth: number = 15, signal?: AbortSignal): Promise<any> {
+    return new Promise((resolve, reject) => {
       let bestMove: string | null = null;
       let evalCp: number | null = null;
       
+      if (signal?.aborted) {
+        return reject(new DOMException('Analysis cancelled', 'AbortError'));
+      }
+
       this.abortController = new AbortController();
+
+      const onAbort = () => {
+        this.abortController?.abort();
+        reject(new DOMException('Analysis cancelled', 'AbortError'));
+      };
+
+      if (signal) {
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
       
       fetch(`/api/engine?fen=${encodeURIComponent(fen)}&depth=${depth}&mode=single`, {
         signal: this.abortController.signal
@@ -21,6 +34,11 @@ export class StockfishEngine {
         let buffer = '';
         
         while (true) {
+          if (signal?.aborted) {
+            reader.cancel();
+            return reject(new DOMException('Analysis cancelled', 'AbortError'));
+          }
+
           const { done, value } = await reader.read();
           if (done) break;
           
@@ -58,7 +76,11 @@ export class StockfishEngine {
         }
         resolve({ bestMove, evalCp: evalCp || 0 });
       }).catch((e) => {
-        resolve({ bestMove, evalCp: 0 });
+        if (signal?.aborted || e?.name === 'AbortError') {
+          reject(new DOMException('Analysis cancelled', 'AbortError'));
+        } else {
+          resolve({ bestMove, evalCp: 0 });
+        }
       });
       
       setTimeout(() => {

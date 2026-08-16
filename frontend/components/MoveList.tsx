@@ -1,11 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore, Move } from '../store/useGameStore';
 import { Chess } from 'chess.js';
 import { clsx } from 'clsx';
 
 export const MoveList: React.FC = () => {
-  const { analysisResult, originalAnalysisResult, currentMoveIndex, setPreviewMoveIndex, setCurrentMoveIndex, restoreMainline, branchGame, addVariation } = useGameStore();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const { 
+    analysisResult, 
+    currentMoveIndex, 
+    activeVariation,
+    setActiveVariation,
+    setCurrentMoveIndex, 
+    setPreviewMoveIndex,
+    addVariation, 
+    deleteVariation 
+  } = useGameStore();
+
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -78,125 +87,107 @@ export const MoveList: React.FC = () => {
     });
 
     const pointsStr = pointData.map(p => `${p.x},${p.y}`).join(' ');
-    const areaPoints = `0,20 ${pointsStr} ${width},20`;
-    
-    const displayIndex = hoverIndex !== null ? hoverIndex : currentMoveIndex;
-    const activeX = displayIndex >= 0 && displayIndex < moves.length ? pointData[displayIndex].x : 0;
-    const activeY = displayIndex >= 0 && displayIndex < moves.length ? pointData[displayIndex].y : 20;
-
-    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const xPos = e.clientX - rect.left;
-      const pct = xPos / rect.width;
-      const idx = Math.round(pct * (moves.length - 1));
-      const safeIdx = Math.max(0, Math.min(moves.length - 1, idx));
-      setHoverIndex(safeIdx);
-      setPreviewMoveIndex(safeIdx);
-    };
-
-    const handleMouseLeave = () => {
-      setHoverIndex(null);
-      setPreviewMoveIndex(null);
-    };
 
     return (
-      <div className="w-full h-10 mb-6 px-4 group relative cursor-crosshair">
+      <div className="relative w-full h-[50px] bg-[#1a1a1a] rounded-lg p-1.5 flex flex-col justify-between overflow-hidden group border border-white/5 shrink-0">
         <svg 
           viewBox={`0 0 ${width} ${height}`} 
-          className="w-full h-full overflow-visible" 
+          className="w-full h-full overflow-visible"
           preserveAspectRatio="none"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
         >
-          <defs>
-            <clipPath id="above">
-              <rect x="0" y="0" width={width} height="20" />
-            </clipPath>
-            <clipPath id="below">
-              <rect x="0" y="20" width={width} height="20" />
-            </clipPath>
-          </defs>
+          {/* Zero line */}
+          <line x1="0" y1={height/2} x2={width} y2={height/2} stroke="#333" strokeWidth="1" strokeDasharray="2,2" />
           
-          <polygon points={areaPoints} fill="rgba(255,255,255,0.06)" clipPath="url(#above)" />
-          <polygon points={areaPoints} fill="rgba(0,0,0,0.4)" clipPath="url(#below)" />
+          {/* Shaded Area */}
+          <polygon 
+            points={`0,${height/2} ${pointsStr} ${width},${height/2}`} 
+            fill="rgba(251, 191, 36, 0.08)" 
+          />
           
-          <line x1="0" y1="20" x2={width} y2="20" stroke="#3f3f46" strokeWidth="1" strokeDasharray="4 3" />
-          
-          {pointData.map((p, i) => {
-            if (i === 0) return null;
-            const prev = pointData[i - 1];
-            const isBlunder = p.delta > 150; // >1.5 pawns swing
-            return (
-              <line 
-                key={i}
-                x1={prev.x} y1={prev.y} 
-                x2={p.x} y2={p.y} 
-                stroke={isBlunder ? "#ef4444" : "#0ea5e9"} 
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            );
-          })}
-          
-          {displayIndex >= 0 && displayIndex < moves.length && (
-             <g className="transition-all duration-75">
-               {hoverIndex !== null && (
-                 <line x1={activeX} y1="0" x2={activeX} y2={height} stroke="#52525b" strokeWidth="1" />
-               )}
-               {hoverIndex === null && (
-                 <line x1={activeX} y1={activeY} x2={activeX} y2="20" stroke="#fbbf24" strokeWidth="1" opacity="0.4" />
-               )}
-               <circle 
-                 cx={activeX} 
-                 cy={activeY} 
-                 r="3.5" 
-                 fill={hoverIndex !== null ? "#fff" : "#fbbf24"} 
-                 stroke="#fff"
-                 strokeWidth="1.5"
-                 className={hoverIndex === null ? "drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]" : ""}
-               />
-             </g>
+          {/* The Advantage Line */}
+          <polyline 
+            fill="none" 
+            stroke="#fbbf24" 
+            strokeWidth="1.5" 
+            points={pointsStr} 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+          />
+
+          {/* Current move indicator point */}
+          {currentMoveIndex >= 0 && currentMoveIndex < pointData.length && (
+            <circle 
+              cx={pointData[currentMoveIndex].x} 
+              cy={pointData[currentMoveIndex].y} 
+              r="3" 
+              fill="#fff" 
+              stroke="#fbbf24" 
+              strokeWidth="1.5" 
+            />
+          )}
+
+          {/* Hover indicator point */}
+          {hoverIndex !== null && hoverIndex >= 0 && hoverIndex < pointData.length && (
+            <circle 
+              cx={pointData[hoverIndex].x} 
+              cy={pointData[hoverIndex].y} 
+              r="2.5" 
+              fill="#38bdf8" 
+            />
           )}
         </svg>
 
-        {/* Hover Tooltip */}
-        {hoverIndex !== null && (
-          <div 
-            className="absolute top-[-30px] bg-zinc-800 text-zinc-200 text-[10px] font-bold px-2 py-1 rounded shadow-xl border border-white/10 pointer-events-none whitespace-nowrap z-50 transform -translate-x-1/2"
-            style={{ left: `calc(1rem + ${pointData[hoverIndex].x / width * 100}%)` }}
-          >
-            Move {Math.floor(hoverIndex / 2) + 1} · {moves[hoverIndex].move_san} · eval: {(moves[hoverIndex].eval_after_cp / 100).toFixed(1)}
+        {/* Hover tooltips */}
+        <div 
+          className="absolute inset-0 z-10 flex cursor-crosshair"
+          onMouseLeave={() => { setHoverIndex(null); setPreviewMoveIndex(null); }}
+        >
+          {moves.map((_, i) => (
+            <div 
+              key={i} 
+              className="flex-1 h-full"
+              onMouseEnter={() => {
+                setHoverIndex(i);
+                setPreviewMoveIndex(i);
+              }}
+              onClick={() => setCurrentMoveIndex(i)}
+            />
+          ))}
+        </div>
+
+        {/* Tooltip Overlay */}
+        {hoverIndex !== null && moves[hoverIndex] && (
+          <div className="absolute top-1 right-2 bg-zinc-900/90 border border-white/10 text-[10px] text-zinc-300 font-mono px-1.5 py-0.5 rounded shadow pointer-events-none flex gap-1.5 items-center z-20">
+            <span className="font-bold text-amber-400">
+              {Math.floor(hoverIndex/2)+1}{hoverIndex%2===0?'.':'...'} {moves[hoverIndex].move_san}
+            </span>
+            <span className="text-zinc-500">|</span>
+            <span>
+              {moves[hoverIndex].eval_after_cp > 0 ? '+' : ''}
+              {(moves[hoverIndex].eval_after_cp / 100).toFixed(1)}
+            </span>
           </div>
         )}
       </div>
     );
   };
 
-
-
   return (
-    <div ref={scrollRef} className="h-full flex flex-col bg-gray-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-      
-      <div className="p-4 border-b border-white/10 bg-black/20 shrink-0">
-        <div 
-          className="flex flex-nowrap overflow-x-auto gap-2.5 justify-start mb-4 text-[10px] w-full px-1 py-1 scrollbar-hide"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#06b6d4] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Brilliant</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#22c55e] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Best</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#86efac] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Excellent</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#4ade80] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Good</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#fbbf24] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Inaccuracy</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#f97316] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Mistake</span></div>
-          <div className="flex items-center gap-1 shrink-0"><span className="w-[9px] h-[9px] bg-[#ef4444] rounded-[2px]"></span><span className="font-bold text-gray-300 uppercase">Blunder</span></div>
+    <div className="flex flex-col h-full bg-[#111] overflow-hidden font-sans">
+      {/* Top Header - Fixed and Non-Scrolling */}
+      <div className="p-3 border-b border-gray-800/80 bg-[#141414] flex flex-col gap-2 shrink-0">
+        <div className="flex justify-between items-center text-xs">
+          <span className="font-bold text-zinc-300 uppercase tracking-wider text-[11px]">Move Log</span>
+          <span className="text-gray-500 font-mono text-[10px]">{moves.length} plies</span>
         </div>
+
+        {/* Advantage Line Graph */}
         {renderSparkline()}
 
-        {/* Critical Moments Jump Bar */}
-        <div className="flex justify-between items-center px-4 w-full h-6 mt-2 relative">
-          <div className="absolute top-1/2 left-4 right-4 h-px bg-white/10 -translate-y-1/2"></div>
+        {/* Mini Badges Line */}
+        <div className="flex gap-1 justify-between items-center py-1 overflow-x-auto custom-scrollbar">
           {pairs.map((pair, idx) => {
-            const classRank = { 'blunder': 7, 'mistake': 6, 'inaccuracy': 5, 'brilliant': 4, 'best': 3, 'great': 2, 'good': 1 };
+            const classRank = { blunder: 7, mistake: 6, inaccuracy: 5, brilliant: 4, great: 3, best: 2, good: 1, book: 0 };
             const wRank = classRank[pair.white.classification as keyof typeof classRank] || 0;
             const bRank = pair.black ? (classRank[pair.black.classification as keyof typeof classRank] || 0) : 0;
             const maxRank = Math.max(wRank, bRank);
@@ -216,7 +207,7 @@ export const MoveList: React.FC = () => {
             return (
               <div 
                 key={idx} 
-                className="relative group cursor-pointer z-10 p-1"
+                className="relative group cursor-pointer z-10 p-0.5"
                 onClick={() => setCurrentMoveIndex(idx * 2)}
                 title={`Move ${idx + 1}`}
               >
@@ -232,6 +223,7 @@ export const MoveList: React.FC = () => {
         </div>
       </div>
 
+      {/* Moves Scroll Container - ONLY MOVES SCROLL */}
       <div id="move-list-scroll-container" className="flex-1 overflow-y-auto min-h-0 p-2 custom-scrollbar relative">
         <div className="w-full text-sm text-gray-300 flex flex-col">
           <div className="sticky top-0 bg-[#111] z-30 shadow-[0_4px_10px_#111] flex px-2 py-2 text-gray-500 uppercase text-[10px] font-black tracking-widest border-b border-gray-800/50">
@@ -239,6 +231,7 @@ export const MoveList: React.FC = () => {
             <div className="flex-1">White</div>
             <div className="flex-1">Black</div>
           </div>
+
           <div className="flex flex-col pb-4">
             {pairs.map((pair, idx) => {
               const formatDelta = (delta: number) => {
@@ -257,7 +250,6 @@ export const MoveList: React.FC = () => {
                 
                 return (
                   <div className="absolute left-[100%] ml-2 top-0 z-50 hidden group-hover:block w-52 bg-zinc-900 border border-white/10 shadow-2xl rounded-xl p-3 animate-in fade-in zoom-in-95 duration-100 cursor-default">
-                    {/* Invisible bridge to keep hover state active */}
                     <div className="absolute -left-3 top-0 w-3 h-full bg-transparent"></div>
                     <div className={clsx("text-[10px] font-black tracking-widest mb-2 flex items-center gap-2", getDotColor(move.classification))}>
                       <span className="w-1.5 h-1.5 bg-current rounded-full"></span>
@@ -281,7 +273,7 @@ export const MoveList: React.FC = () => {
                                 const promotion = move.best_move_uci.length > 4 ? move.best_move_uci[4] : undefined;
                                 const moveObj = testChess.move({ from, to, promotion });
                                 if (moveObj) {
-                                  const newMove = {
+                                  const newMove: Move = {
                                     ...move,
                                     move_san: moveObj.san,
                                     move_uci: move.best_move_uci,
@@ -290,8 +282,6 @@ export const MoveList: React.FC = () => {
                                   };
                                   const moveIdx = moves.findIndex(m => m === move);
                                   addVariation(moveIdx, [newMove]);
-                                  const baseMoves = moves.slice(0, moveIdx);
-                                  branchGame([...baseMoves, newMove], baseMoves.length);
                                 }
                               } catch (err) {}
                             }}
@@ -316,114 +306,206 @@ export const MoveList: React.FC = () => {
                 <React.Fragment key={idx}>
                   <div className={clsx("flex px-2 relative", idx % 2 === 0 ? 'bg-transparent' : 'bg-white/5')}>
                     <div className="w-[32px] py-1.5 text-gray-600 font-mono text-xs flex items-center">{pair.num}.</div>
-                  
-                  {/* White Move */}
-                  <div 
-                    onClick={() => setCurrentMoveIndex(idx * 2)}
-                    className={clsx(
-                      "flex-1 grid grid-cols-[22px_58px_40px] items-center gap-1 py-1.5 px-2 cursor-pointer transition-all border-l-[2px] relative group",
-                      currentMoveIndex === idx * 2 
-                        ? "bg-[rgba(251,191,36,0.06)] border-[#fbbf24] active-move" 
-                        : "border-transparent hover:bg-zinc-800/30"
-                    )}
-                  >
-                    {getClassificationSymbol(pair.white.classification) ? (
-                      <span className={clsx("w-[18px] h-[18px] flex items-center justify-center rounded shadow-sm font-black text-[10px]", getDotColor(pair.white.classification))}>
-                        {getClassificationSymbol(pair.white.classification)}
-                      </span>
-                    ) : (
-                      <span className="w-[18px] h-[18px]" />
-                    )}
-                    <span className="font-bold truncate text-gray-200">{pair.white.move_san}</span>
-                    <span className="text-[10px] text-zinc-500 font-mono text-right truncate">
-                      {formatDelta((pair.white.cp_loss || 0) / -100)}
-                    </span>
-                    {renderMovePopover(pair.white)}
-                  </div>
-                  
-                  {/* Black Move */}
-                  <div 
-                    onClick={() => pair.black && setCurrentMoveIndex(idx * 2 + 1)}
-                    className={clsx(
-                      "flex-1 grid grid-cols-[22px_58px_40px] items-center gap-1 py-1.5 px-2 transition-all border-l-[2px] relative group",
-                      pair.black ? "cursor-pointer" : "cursor-default",
-                      pair.black && currentMoveIndex === idx * 2 + 1 
-                        ? "bg-[rgba(251,191,36,0.06)] border-[#fbbf24] active-move" 
-                        : "border-transparent hover:bg-zinc-800/30"
-                    )}
-                  >
-                    {pair.black && (
-                      <>
-                        {getClassificationSymbol(pair.black.classification) ? (
-                          <span className={clsx("w-[18px] h-[18px] flex items-center justify-center rounded shadow-sm font-black text-[10px]", getDotColor(pair.black.classification))}>
-                            {getClassificationSymbol(pair.black.classification)}
-                          </span>
-                        ) : (
-                          <span className="w-[18px] h-[18px]" />
-                        )}
-                        <span className="font-bold truncate text-gray-200">{pair.black.move_san}</span>
-                        <span className="text-[10px] text-zinc-500 font-mono text-right truncate">
-                          {formatDelta((pair.black.cp_loss || 0) / -100)}
+                    
+                    {/* White Move */}
+                    <div 
+                      onClick={() => setCurrentMoveIndex(idx * 2)}
+                      className={clsx(
+                        "flex-1 grid grid-cols-[22px_58px_40px] items-center gap-1 py-1.5 px-2 cursor-pointer transition-all border-l-[2px] relative group",
+                        currentMoveIndex === idx * 2 && !activeVariation
+                          ? "bg-[rgba(251,191,36,0.06)] border-[#fbbf24] active-move" 
+                          : "border-transparent hover:bg-zinc-800/30"
+                      )}
+                    >
+                      {getClassificationSymbol(pair.white.classification) ? (
+                        <span className={clsx("w-[18px] h-[18px] flex items-center justify-center rounded shadow-sm font-black text-[10px]", getDotColor(pair.white.classification))}>
+                          {getClassificationSymbol(pair.white.classification)}
                         </span>
-                        {renderMovePopover(pair.black)}
-                      </>
-                    )}
+                      ) : (
+                        <span className="w-[18px] h-[18px]" />
+                      )}
+                      <span className="font-bold truncate text-gray-200">{pair.white.move_san}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono text-right truncate">
+                        {formatDelta((pair.white.cp_loss || 0) / -100)}
+                      </span>
+                      {renderMovePopover(pair.white)}
+                    </div>
+                    
+                    {/* Black Move */}
+                    <div 
+                      onClick={() => pair.black && setCurrentMoveIndex(idx * 2 + 1)}
+                      className={clsx(
+                        "flex-1 grid grid-cols-[22px_58px_40px] items-center gap-1 py-1.5 px-2 transition-all border-l-[2px] relative group",
+                        pair.black ? "cursor-pointer" : "cursor-default",
+                        pair.black && currentMoveIndex === idx * 2 + 1 && !activeVariation
+                          ? "bg-[rgba(251,191,36,0.06)] border-[#fbbf24] active-move" 
+                          : "border-transparent hover:bg-zinc-800/30"
+                      )}
+                    >
+                      {pair.black && (
+                        <>
+                          {getClassificationSymbol(pair.black.classification) ? (
+                            <span className={clsx("w-[18px] h-[18px] flex items-center justify-center rounded shadow-sm font-black text-[10px]", getDotColor(pair.black.classification))}>
+                              {getClassificationSymbol(pair.black.classification)}
+                            </span>
+                          ) : (
+                            <span className="w-[18px] h-[18px]" />
+                          )}
+                          <span className="font-bold truncate text-gray-200">{pair.black.move_san}</span>
+                          <span className="text-[10px] text-zinc-500 font-mono text-right truncate">
+                            {formatDelta((pair.black.cp_loss || 0) / -100)}
+                          </span>
+                          {renderMovePopover(pair.black)}
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-                {(pair.white.variations || (pair.black && pair.black.variations)) && (
-                  <div className="w-full flex flex-col pl-[32px] pr-2 pb-1 space-y-0.5">
-                    {pair.white.variations?.map((variation, vIdx) => (
-                      <div 
-                        key={`w-var-${vIdx}`} 
-                        onClick={() => {
-                          const baseMoves = moves.slice(0, idx * 2);
-                          const newMoves = [...baseMoves, ...variation];
-                          branchGame(newMoves, baseMoves.length);
-                        }}
-                        className="bg-zinc-800/40 hover:bg-amber-500/10 cursor-pointer border-l-2 border-amber-500/50 pl-2 py-1 rounded-r flex items-center justify-between text-xs transition-colors group"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-zinc-500 font-mono">{pair.num}.</span>
-                          <span className="text-amber-400 font-bold">{variation[0].move_san}</span>
+
+                  {/* Inline Variation Branches under Move */}
+                  {(pair.white.variations || (pair.black && pair.black.variations)) && (
+                    <div className="w-full flex flex-col pl-[32px] pr-2 pb-1 space-y-1">
+                      {pair.white.variations?.map((variation, vIdx) => (
+                        <div 
+                          key={`w-var-${vIdx}`} 
+                          className={clsx(
+                            "border-l-2 pl-2 py-1.5 rounded-r flex items-center justify-between text-xs transition-all",
+                            activeVariation && activeVariation.parentMoveIndex === idx * 2 && activeVariation.variationIndex === vIdx
+                              ? "bg-amber-500/20 border-amber-400 text-amber-200 shadow-sm"
+                              : "bg-zinc-800/40 hover:bg-zinc-800/70 border-amber-500/50 text-zinc-300"
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-zinc-500 font-mono">{pair.num}.</span>
+                            {variation.map((varM, mIdx) => {
+                              const isVarActive = activeVariation && 
+                                activeVariation.parentMoveIndex === idx * 2 && 
+                                activeVariation.variationIndex === vIdx && 
+                                activeVariation.moveIndex === mIdx;
+
+                              return (
+                                <button
+                                  key={mIdx}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveVariation({
+                                      parentMoveIndex: idx * 2,
+                                      variationIndex: vIdx,
+                                      moveIndex: mIdx
+                                    });
+                                  }}
+                                  className={clsx(
+                                    "font-bold px-1.5 py-0.5 rounded transition-colors",
+                                    isVarActive ? "bg-amber-400 text-black shadow-sm" : "text-amber-400/90 hover:bg-white/10"
+                                  )}
+                                >
+                                  {mIdx > 0 && (mIdx % 2 === 1 ? `${Math.floor((idx * 2 + mIdx) / 2) + 1}... ` : `${Math.floor((idx * 2 + mIdx) / 2) + 1}. `)}
+                                  {varM.move_san}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex items-center gap-1 ml-2 shrink-0">
+                            {activeVariation && activeVariation.parentMoveIndex === idx * 2 && activeVariation.variationIndex === vIdx && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentMoveIndex(idx * 2);
+                                }}
+                                className="text-[10px] bg-white/10 hover:bg-white/20 text-zinc-300 px-1.5 py-0.5 rounded"
+                                title="Return to Mainline Move"
+                              >
+                                Mainline
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteVariation(idx * 2, vIdx);
+                              }}
+                              className="text-zinc-500 hover:text-red-400 p-0.5 rounded font-bold text-xs"
+                              title="Delete Variation"
+                            >
+                              ×
+                            </button>
+                          </div>
                         </div>
-                        <span className="text-[10px] text-zinc-500 font-mono group-hover:text-amber-400">Inspect Line →</span>
-                      </div>
-                    ))}
-                    {pair.black?.variations?.map((variation, vIdx) => (
-                      <div 
-                        key={`b-var-${vIdx}`} 
-                        onClick={() => {
-                          const baseMoves = moves.slice(0, idx * 2 + 1);
-                          const newMoves = [...baseMoves, ...variation];
-                          branchGame(newMoves, baseMoves.length);
-                        }}
-                        className="bg-zinc-800/40 hover:bg-amber-500/10 cursor-pointer border-l-2 border-amber-500/50 pl-2 py-1 rounded-r flex items-center justify-between text-xs transition-colors group"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-zinc-500 font-mono">{pair.num}...</span>
-                          <span className="text-amber-400 font-bold">{variation[0].move_san}</span>
+                      ))}
+
+                      {pair.black?.variations?.map((variation, vIdx) => (
+                        <div 
+                          key={`b-var-${vIdx}`} 
+                          className={clsx(
+                            "border-l-2 pl-2 py-1.5 rounded-r flex items-center justify-between text-xs transition-all",
+                            activeVariation && activeVariation.parentMoveIndex === idx * 2 + 1 && activeVariation.variationIndex === vIdx
+                              ? "bg-amber-500/20 border-amber-400 text-amber-200 shadow-sm"
+                              : "bg-zinc-800/40 hover:bg-zinc-800/70 border-amber-500/50 text-zinc-300"
+                          )}
+                        >
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-zinc-500 font-mono">{pair.num}...</span>
+                            {variation.map((varM, mIdx) => {
+                              const isVarActive = activeVariation && 
+                                activeVariation.parentMoveIndex === idx * 2 + 1 && 
+                                activeVariation.variationIndex === vIdx && 
+                                activeVariation.moveIndex === mIdx;
+
+                              return (
+                                <button
+                                  key={mIdx}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveVariation({
+                                      parentMoveIndex: idx * 2 + 1,
+                                      variationIndex: vIdx,
+                                      moveIndex: mIdx
+                                    });
+                                  }}
+                                  className={clsx(
+                                    "font-bold px-1.5 py-0.5 rounded transition-colors",
+                                    isVarActive ? "bg-amber-400 text-black shadow-sm" : "text-amber-400/90 hover:bg-white/10"
+                                  )}
+                                >
+                                  {mIdx > 0 && (mIdx % 2 === 1 ? `${Math.floor((idx * 2 + 1 + mIdx) / 2) + 1}. ` : `${Math.floor((idx * 2 + 1 + mIdx) / 2) + 1}... `)}
+                                  {varM.move_san}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex items-center gap-1 ml-2 shrink-0">
+                            {activeVariation && activeVariation.parentMoveIndex === idx * 2 + 1 && activeVariation.variationIndex === vIdx && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentMoveIndex(idx * 2 + 1);
+                                }}
+                                className="text-[10px] bg-white/10 hover:bg-white/20 text-zinc-300 px-1.5 py-0.5 rounded"
+                                title="Return to Mainline Move"
+                              >
+                                Mainline
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteVariation(idx * 2 + 1, vIdx);
+                              }}
+                              className="text-zinc-500 hover:text-red-400 p-0.5 rounded font-bold text-xs"
+                              title="Delete Variation"
+                            >
+                              ×
+                            </button>
+                          </div>
                         </div>
-                        <span className="text-[10px] text-zinc-500 font-mono group-hover:text-amber-400">Inspect Line →</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
               );
             })}
           </div>
         </div>
-      {originalAnalysisResult && analysisResult !== originalAnalysisResult && (
-        <div className="sticky bottom-0 p-4 mt-4 bg-gradient-to-t from-gray-900 via-gray-900/90 to-transparent flex justify-center z-20">
-          <button 
-            onClick={restoreMainline}
-            className="w-full max-w-xs bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-400 border border-cyan-500/30 font-bold py-2.5 px-4 rounded-xl transition-all shadow-lg text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-            Restore Mainline Game
-          </button>
-        </div>
-      )}
       </div>
     </div>
   );
